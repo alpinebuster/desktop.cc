@@ -3,8 +3,6 @@ cmake_minimum_required(VERSION 3.10)
 ## Add paths to check for cmake modules:
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-option(BUILD_WITH_PCH "Build with precompiled headers" ON)
-
 include(FeatureSummary)
 include(QtCreatorIDEBranding RESULT_VARIABLE IDE_BRANDING_FILE)
 include(QtCreatorTranslations)
@@ -26,17 +24,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 qtc_handle_sccache_support()
 
-option(BUILD_LINK_WITH_QT "Link with Qt from the parent Qt Creator" OFF)
-qtc_link_with_qt()
-
 option(WITH_TESTS "Build Tests" OFF)
 add_feature_info("Build tests" ${WITH_TESTS} "")
-option(WITH_DEBUG_CMAKE "Enabled CMake project debugging functionality" OFF)
+option(WITH_DEBUG_CMAKE "Enabled CMake project debugging functionality (e.g. source file disk checking)" OFF)
 option(SHOW_BUILD_DATE "Show build date in about dialog" OFF)
-option(WITH_SANITIZE "Build with sanitizer enabled" OFF)
-set(SANITIZE_FLAGS "" CACHE STRING "Sets flags for sanitizer compilation flags used in Debug builds")
-add_feature_info("Build with sanitize" ${WITH_SANITIZE} "SANITIZE_FLAGS='${SANITIZE_FLAGS}'")
-
 
 # merge binary directories of sub projects into top level
 set(QTC_MERGE_BINARY_DIR ON)
@@ -55,7 +46,8 @@ endif()
 
 find_package(Qt5
   ${IDE_QT_VERSION_MIN}
-  COMPONENTS Concurrent Core Gui Network PrintSupport Qml Sql Widgets Xml Core5Compat ${QT_TEST_COMPONENT}
+  COMPONENTS Concurrent Core Gui Network PrintSupport Qml Quick
+    QuickWidgets Sql Widgets Xml Core5Compat ${QT_TEST_COMPONENT}
   REQUIRED
 )
 if (Qt5_VERSION VERSION_LESS 6.0.0)
@@ -66,12 +58,11 @@ if (Qt5_VERSION VERSION_LESS 6.0.0)
   if (MSVC AND MSVC_VERSION GREATER_EQUAL 1910)
     add_compile_options(/permissive- /Zc:__cplusplus)
   endif()
-else()
-  # Common intermediate directory for QML modules which are defined via qt_add_qml_module()
-  set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml_modules")
 endif()
 find_package(Qt5 COMPONENTS LinguistTools QUIET)
-find_package(Qt5 COMPONENTS Quick QuickWidgets Designer DesignerComponents Help SerialPort Svg Tools QUIET)
+find_package(Qt5 COMPONENTS Designer DesignerComponents Help SerialPort Svg Tools QUIET)
+
+option(BUILD_WITH_PCH "Build with precompiled headers" ON)
 
 find_package(Threads)
 find_package(Clang QUIET)
@@ -169,16 +160,16 @@ endif()
 # install qmake support files
 install(
   FILES
-    qtcreator.pri
-    qtcreatordata.pri
-    qtcreator_ide_branding.pri
+    mfds.pri
+    mfds_data.pri
+    mfds_ide_branding.pri
   DESTINATION ${IDE_HEADER_INSTALL_PATH}
   COMPONENT Devel EXCLUDE_FROM_ALL
 )
 install(
   FILES
-    src/qtcreatorlibrary.pri
-    src/qtcreatorplugin.pri
+    src/mfds_library.pri
+    src/mfds_plugin.pri
     src/qtcreatortool.pri
     src/rpath.pri
   DESTINATION ${IDE_HEADER_INSTALL_PATH}/src

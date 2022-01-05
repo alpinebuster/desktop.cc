@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "fancytabwidget.h"
 
 #include "coreconstants.h"
@@ -469,21 +444,19 @@ signals:
     void clicked(Qt::MouseButton button, Qt::KeyboardModifiers modifiers);
 };
 
-//////
-// FancyTabWidget
-//////
-
 FancyTabWidget::FancyTabWidget(QWidget *parent)
     : QWidget(parent)
 {
+    /// MARK
     m_tabBar = new FancyTabBar(this);
     m_tabBar->setObjectName("ModeSelector"); // used for UI introduction
 
-    m_selectionWidget = new QWidget(this);
     auto selectionLayout = new QVBoxLayout;
     selectionLayout->setSpacing(0);
     selectionLayout->setContentsMargins(0, 0, 0, 0);
 
+    /* FIXME: What does topAreaClicked() do?
+     * Currently we only kown that this will remove extra space above Tab items
     auto bar = new StyledBar;
     auto layout = new QHBoxLayout(bar);
     layout->setContentsMargins(0, 0, 0, 0);
@@ -491,38 +464,41 @@ FancyTabWidget::FancyTabWidget(QWidget *parent)
     auto fancyButton = new FancyColorButton(this);
     connect(fancyButton, &FancyColorButton::clicked, this, &FancyTabWidget::topAreaClicked);
     layout->addWidget(fancyButton);
-    selectionLayout->addWidget(bar);
+    selectionLayout->addWidget(bar);*/
 
     selectionLayout->addWidget(m_tabBar);
     selectionLayout->addStretch(1);
-    m_selectionWidget->setLayout(selectionLayout);
-    m_selectionWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
-
-    m_cornerWidgetContainer = new QWidget(this);
-    m_cornerWidgetContainer->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
-    m_cornerWidgetContainer->setAutoFillBackground(false);
 
     auto cornerWidgetLayout = new QVBoxLayout;
     cornerWidgetLayout->setSpacing(0);
     cornerWidgetLayout->setContentsMargins(0, 0, 0, 0);
     cornerWidgetLayout->addStretch();
+    m_cornerWidgetContainer = new QWidget(this);
+    m_cornerWidgetContainer->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
+    m_cornerWidgetContainer->setAutoFillBackground(false);
     m_cornerWidgetContainer->setLayout(cornerWidgetLayout);
+    // Toggle bottom tab visibility
+    // FIXME: Add a button to toggle the visibility of tab bar
+    // TODO: Ignore this issuse in this dev phase
+    m_cornerWidgetContainer->setVisible(false);
+    selectionLayout->addWidget(m_cornerWidgetContainer);
+    m_selectionWidget = new QWidget(this);
+    m_selectionWidget->setLayout(selectionLayout);
+    m_selectionWidget->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 
-    selectionLayout->addWidget(m_cornerWidgetContainer, 0);
-
+    /// MARK
     m_modesStack = new QStackedLayout;
     m_statusBar = new QStatusBar;
     m_statusBar->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
-
     auto vlayout = new QVBoxLayout;
     vlayout->setContentsMargins(0, 0, 0, 0);
     vlayout->setSpacing(0);
     vlayout->addLayout(m_modesStack);
     vlayout->addWidget(m_statusBar);
-
     m_infoBarDisplay.setTarget(vlayout, 1);
     m_infoBarDisplay.setEdge(Qt::BottomEdge);
 
+    /// MARK
     auto mainLayout = new QHBoxLayout;
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(1);
@@ -549,12 +525,6 @@ void FancyTabWidget::insertTab(int index, QWidget *tab, const QIcon &icon, const
 {
     m_modesStack->insertWidget(index, tab);
     m_tabBar->insertTab(index, icon, label, hasMenu);
-}
-
-void FancyTabWidget::removeTab(int index)
-{
-    m_modesStack->removeWidget(m_modesStack->widget(index));
-    m_tabBar->removeTab(index);
 }
 
 void FancyTabWidget::setBackgroundBrush(const QBrush &brush)

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "documentmanager.h"
 
 #include "icore.h"
@@ -37,12 +12,12 @@
 #include <coreplugin/dialogs/filepropertiesdialog.h>
 #include <coreplugin/dialogs/readonlyfilesdialog.h>
 #include <coreplugin/dialogs/saveitemsdialog.h>
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/editormanager/editormanager_p.h>
-#include <coreplugin/editormanager/editorview.h>
-#include <coreplugin/editormanager/ieditor.h>
-#include <coreplugin/editormanager/ieditorfactory.h>
-#include <coreplugin/editormanager/iexternaleditor.h>
+#include <coreplugin/homemanager/homemanager.h>
+#include <coreplugin/homemanager/homemanager_p.h>
+#include <coreplugin/homemanager/homeview.h>
+#include <coreplugin/homemanager/ieditor.h>
+#include <coreplugin/homemanager/ieditorfactory.h>
+#include <coreplugin/homemanager/iexternalhome.h>
 
 #include <extensionsystem/pluginmanager.h>
 
@@ -55,7 +30,6 @@
 #include <utils/pathchooser.h>
 #include <utils/qtcassert.h>
 #include <utils/reloadpromptutils.h>
-#include <utils/threadutils.h>
 
 #include <QStringList>
 #include <QDateTime>
@@ -189,8 +163,8 @@ public:
 
     QFileSystemWatcher *m_fileWatcher = nullptr; // Delayed creation.
     QFileSystemWatcher *m_linkWatcher = nullptr; // Delayed creation (only UNIX/if a link is seen).
-    FilePath m_lastVisitedDirectory = FilePath::fromString(QDir::currentPath());
-    FilePath m_defaultLocationForNewFiles;
+    QString m_lastVisitedDirectory = QDir::currentPath();
+    QString m_defaultLocationForNewFiles;
     FilePath m_projectsDirectory;
     // When we are calling into an IDocument
     // we don't want to receive a changed()
@@ -288,7 +262,7 @@ DocumentManager::DocumentManager(QObject *parent)
     readSettings();
 
     if (d->m_useProjectsDirectory)
-        setFileDialogLastVisitedDirectory(d->m_projectsDirectory);
+        setFileDialogLastVisitedDirectory(d->m_projectsDirectory.toString());
 }
 
 DocumentManager::~DocumentManager()
@@ -327,7 +301,6 @@ static void addFileInfo(IDocument *document, const FilePath &filePath, const Fil
    (The added file names are guaranteed to be absolute and cleaned.) */
 static void addFileInfos(const QList<IDocument *> &documents)
 {
-    QTC_ASSERT(isMainThread(), return);
     FilePaths pathsToWatch;
     FilePaths linkPathsToWatch;
     for (IDocument *document : documents) {
@@ -402,7 +375,6 @@ void DocumentManager::addDocuments(const QList<IDocument *> &documents, bool add
 */
 static void removeFileInfo(IDocument *document)
 {
-    QTC_ASSERT(isMainThread(), return);
     if (!d->m_documentsWithWatch.contains(document))
         return;
     foreach (const FilePath &filePath, d->m_documentsWithWatch.value(document)) {
@@ -607,7 +579,7 @@ QList<IDocument *> DocumentManager::modifiedDocuments()
 }
 
 /*!
-    Treats any subsequent change to \a filePath as an expected file change.
+    Treats any subsequent change to \a fileName as an expected file change.
 
     \sa unexpectFileChange()
 */
@@ -631,7 +603,7 @@ static void updateExpectedState(const FilePath &filePathKey)
 }
 
 /*!
-    Considers all changes to \a filePath unexpected again.
+    Considers all changes to \a fileName unexpected again.
 
     \sa expectFileChange()
 */
@@ -726,7 +698,7 @@ static bool saveModifiedFilesHelper(const QList<IDocument *> &documents,
             }
         }
         foreach (IDocument *document, documentsToSave) {
-            if (!EditorManagerPrivate::saveDocument(document)) {
+            if (!HomeManagerPrivate::saveDocument(document)) {
                 if (cancelled)
                     *cancelled = true;
                 notSaved.append(document);
@@ -799,17 +771,17 @@ QString DocumentManager::allDocumentFactoryFiltersString(QString *allFilesFilter
     return filters.join(QLatin1String(";;"));
 }
 
-FilePath DocumentManager::getSaveFileName(const QString &title, const FilePath &pathIn,
-                                          const QString &filter, QString *selectedFilter)
+QString DocumentManager::getSaveFileName(const QString &title, const QString &pathIn,
+                                     const QString &filter, QString *selectedFilter)
 {
-    const FilePath path = pathIn.isEmpty() ? fileDialogInitialDirectory() : pathIn;
-    FilePath filePath;
+    const QString &path = pathIn.isEmpty() ? fileDialogInitialDirectory() : pathIn;
+    QString fileName;
     bool repeat;
     do {
         repeat = false;
-        filePath = FileUtils::getSaveFilePath(nullptr, title, path, filter, selectedFilter,
-                                              QFileDialog::DontConfirmOverwrite);
-        if (!filePath.isEmpty()) {
+        fileName = QFileDialog::getSaveFileName(
+            ICore::dialogParent(), title, path, filter, selectedFilter, QFileDialog::DontConfirmOverwrite);
+        if (!fileName.isEmpty()) {
             // If the selected filter is All Files (*) we leave the name exactly as the user
             // specified. Otherwise the suffix must be one available in the selected filter. If
             // the name already ends with such suffix nothing needs to be done. But if not, the
@@ -825,31 +797,31 @@ FilePath DocumentManager::getSaveFileName(const QString &title, const FilePath &
                     caption.remove(QLatin1Char('*'));
                     const QStringList suffixes = caption.split(QLatin1Char(' '));
                     for (const QString &suffix : suffixes)
-                        if (filePath.endsWith(suffix)) {
+                        if (fileName.endsWith(suffix)) {
                             suffixOk = true;
                             break;
                         }
                     if (!suffixOk && !suffixes.isEmpty())
-                        filePath = filePath.stringAppended(suffixes.at(0));
+                        fileName.append(suffixes.at(0));
                 }
             }
-            if (filePath.exists()) {
+            if (QFile::exists(fileName)) {
                 if (QMessageBox::warning(ICore::dialogParent(), tr("Overwrite?"),
                     tr("An item named \"%1\" already exists at this location. "
-                       "Do you want to overwrite it?").arg(filePath.toUserOutput()),
+                       "Do you want to overwrite it?").arg(QDir::toNativeSeparators(fileName)),
                     QMessageBox::Yes | QMessageBox::No) == QMessageBox::No) {
                     repeat = true;
                 }
             }
         }
     } while (repeat);
-    if (!filePath.isEmpty())
-        setFileDialogLastVisitedDirectory(filePath.absolutePath());
-    return filePath;
+    if (!fileName.isEmpty())
+        setFileDialogLastVisitedDirectory(QFileInfo(fileName).absolutePath());
+    return fileName;
 }
 
-FilePath DocumentManager::getSaveFileNameWithExtension(const QString &title, const FilePath &pathIn,
-                                                       const QString &filter)
+QString DocumentManager::getSaveFileNameWithExtension(const QString &title, const QString &pathIn,
+                                                  const QString &filter)
 {
     QString selected = filter;
     return getSaveFileName(title, pathIn, filter, &selected);
@@ -858,13 +830,13 @@ FilePath DocumentManager::getSaveFileNameWithExtension(const QString &title, con
 /*!
     Asks the user for a new file name (\uicontrol {Save File As}) for \a document.
 */
-FilePath DocumentManager::getSaveAsFileName(const IDocument *document)
+QString DocumentManager::getSaveAsFileName(const IDocument *document)
 {
-    QTC_ASSERT(document, return {});
+    QTC_ASSERT(document, return QString());
     const QString filter = allDocumentFactoryFiltersString();
-    const FilePath filePath = document->filePath();
+    const QString filePath = document->filePath().toString();
     QString selectedFilter;
-    FilePath fileDialogPath = filePath;
+    QString fileDialogPath = filePath;
     if (!filePath.isEmpty()) {
         selectedFilter = Utils::mimeTypeForFile(filePath).filterString();
     } else {
@@ -874,9 +846,11 @@ FilePath DocumentManager::getSaveAsFileName(const IDocument *document)
             if (!types.isEmpty())
                 selectedFilter = types.first().filterString();
         }
-        const FilePath defaultPath = document->fallbackSaveAsPath();
-        if (!defaultPath.isEmpty() && !suggestedName.isEmpty())
-            fileDialogPath = defaultPath / suggestedName;
+        const QString defaultPath = document->fallbackSaveAsPath();
+        if (!defaultPath.isEmpty())
+            fileDialogPath = defaultPath + (suggestedName.isEmpty()
+                    ? QString()
+                    : '/' + suggestedName);
     }
     if (selectedFilter.isEmpty())
         selectedFilter = Utils::mimeTypeForName(document->mimeType()).filterString();
@@ -1034,16 +1008,28 @@ void DocumentManager::showFilePropertiesDialog(const FilePath &filePath)
     dialog in if that is not overridden by the user's policy.
 */
 
-FilePaths DocumentManager::getOpenFileNames(const QString &filters,
-                                            const FilePath &pathIn,
-                                            QString *selectedFilter)
+QStringList DocumentManager::getOpenFileNames(const QString &filters,
+                                              const QString &pathIn,
+                                              QString *selectedFilter)
 {
-    const FilePath path = pathIn.isEmpty() ? fileDialogInitialDirectory() : pathIn;
-    const FilePaths files = FileUtils::getOpenFilePaths(nullptr, tr("Open File"), path, filters,
-                                                        selectedFilter);
+    const QString &path = pathIn.isEmpty() ? fileDialogInitialDirectory() : pathIn;
+    const QStringList files = QFileDialog::getOpenFileNames(ICore::dialogParent(),
+                                                      tr("Open Files"),
+                                                      path, filters,
+                                                      selectedFilter);
     if (!files.isEmpty())
-        setFileDialogLastVisitedDirectory(files.front().absolutePath());
+        setFileDialogLastVisitedDirectory(QFileInfo(files.front()).absolutePath());
     return files;
+}
+
+QString DocumentManager::getOpenFolderName(const QString &pathIn)
+{
+    const QString &path = pathIn.isEmpty() ? fileDialogInitialDirectory() : pathIn;
+    if (!path.isEmpty())
+        setFileDialogLastVisitedDirectory(path);
+    return QFileDialog::getExistingDirectory(ICore::dialogParent(),
+                                             tr("Open Project (Folder)"),
+                                             path);
 }
 
 void DocumentManager::changedFile(const QString &fileName)
@@ -1081,12 +1067,12 @@ void DocumentManager::checkForReload()
 
     d->m_blockActivated = true;
 
-    IDocument::ReloadSetting defaultBehavior = EditorManager::reloadSetting();
+    IDocument::ReloadSetting defaultBehavior = HomeManager::reloadSetting();
     ReloadPromptAnswer previousReloadAnswer = ReloadCurrent;
     FileDeletedPromptAnswer previousDeletedAnswer = FileDeletedSave;
 
     QList<IDocument *> documentsToClose;
-    QHash<IDocument*, FilePath> documentsToSave;
+    QHash<IDocument*, QString> documentsToSave;
 
     // collect file information
     QMap<FilePath, FileStateItem> currentStates;
@@ -1114,7 +1100,6 @@ void DocumentManager::checkForReload()
 
     // clean up. do this before we may enter the main loop, otherwise we would
     // lose consecutive notifications.
-    emit filesChangedExternally(d->m_changedFiles);
     d->m_changedFiles.clear();
 
     // collect information about "expected" file names
@@ -1189,10 +1174,10 @@ void DocumentManager::checkForReload()
         bool success = true;
         QString errorString;
         // we've got some modification
-        document->checkPermissions();
         // check if it's contents or permissions:
         if (!type) {
             // Only permission change
+            document->checkPermissions();
             success = true;
             // now we know it's a content change or file was removed
         } else if (defaultBehavior == IDocument::ReloadUnmodified && type == IDocument::TypeContents
@@ -1264,12 +1249,12 @@ void DocumentManager::checkForReload()
                     }
                     switch (previousDeletedAnswer) {
                     case FileDeletedSave:
-                        documentsToSave.insert(document, document->filePath());
+                        documentsToSave.insert(document, document->filePath().toString());
                         unhandled = false;
                         break;
                     case FileDeletedSaveAs:
                     {
-                        const FilePath saveFileName = getSaveAsFileName(document);
+                        const QString &saveFileName = getSaveAsFileName(document);
                         if (!saveFileName.isEmpty()) {
                             documentsToSave.insert(document, saveFileName);
                             unhandled = false;
@@ -1305,9 +1290,9 @@ void DocumentManager::checkForReload()
                               errorStrings.join(QLatin1Char('\n')));
 
     // handle deleted files
-    EditorManager::closeDocuments(documentsToClose, false);
+    HomeManager::closeDocuments(documentsToClose, false);
     for (auto it = documentsToSave.cbegin(), end = documentsToSave.cend(); it != end; ++it) {
-        saveDocument(it.key(), it.value());
+        saveDocument(it.key(), Utils::FilePath::fromString(it.value()));
         it.key()->checkPermissions();
     }
 
@@ -1323,7 +1308,7 @@ void DocumentManager::checkForReload()
     \a editorId defaults to the empty ID, which lets \QC figure out
     the best editor itself.
 */
-void DocumentManager::addToRecentFiles(const FilePath &filePath, Id editorId)
+void DocumentManager::addToRecentFiles(const Utils::FilePath &filePath, Id editorId)
 {
     if (filePath.isEmpty())
         return;
@@ -1331,7 +1316,7 @@ void DocumentManager::addToRecentFiles(const FilePath &filePath, Id editorId)
     Utils::erase(d->m_recentFiles, [fileKey](const RecentFile &file) {
         return fileKey == filePathKey(file.first, DocumentManager::KeepLinks);
     });
-    while (d->m_recentFiles.count() >= EditorManagerPrivate::maxRecentFiles())
+    while (d->m_recentFiles.count() >= HomeManagerPrivate::maxRecentFiles())
         d->m_recentFiles.removeLast();
     d->m_recentFiles.prepend(RecentFile(filePath, editorId));
 }
@@ -1370,7 +1355,7 @@ void DocumentManager::saveSettings()
     s->beginGroup(directoryGroupC);
     s->setValueWithDefault(projectDirectoryKeyC,
                            d->m_projectsDirectory.toString(),
-                           PathChooser::homePath().toString());
+                           PathChooser::homePath());
     s->setValueWithDefault(useProjectDirectoryKeyC,
                            d->m_useProjectsDirectory,
                            kUseProjectsDirectoryDefault);
@@ -1401,7 +1386,7 @@ void readSettings()
     if (!settingsProjectDir.isEmpty() && settingsProjectDir.isDir())
         d->m_projectsDirectory = settingsProjectDir;
     else
-        d->m_projectsDirectory = PathChooser::homePath();
+        d->m_projectsDirectory = FilePath::fromString(PathChooser::homePath());
     d->m_useProjectsDirectory
         = s->value(QLatin1String(useProjectDirectoryKeyC), kUseProjectsDirectoryDefault).toBool();
 
@@ -1417,11 +1402,11 @@ void readSettings()
   \sa setFileDialogLastVisitedDirectory(), setDefaultLocationForNewFiles()
 */
 
-FilePath DocumentManager::fileDialogInitialDirectory()
+QString DocumentManager::fileDialogInitialDirectory()
 {
-    IDocument *doc = EditorManager::currentDocument();
+    IDocument *doc = HomeManager::currentDocument();
     if (doc && !doc->isTemporary() && !doc->filePath().isEmpty())
-        return doc->filePath().absolutePath();
+        return doc->filePath().absolutePath().path();
     if (!d->m_defaultLocationForNewFiles.isEmpty())
         return d->m_defaultLocationForNewFiles;
     return d->m_lastVisitedDirectory;
@@ -1433,7 +1418,7 @@ FilePath DocumentManager::fileDialogInitialDirectory()
 
   \sa fileDialogInitialDirectory()
 */
-FilePath DocumentManager::defaultLocationForNewFiles()
+QString DocumentManager::defaultLocationForNewFiles()
 {
     return d->m_defaultLocationForNewFiles;
 }
@@ -1441,7 +1426,7 @@ FilePath DocumentManager::defaultLocationForNewFiles()
 /*!
  Sets the default \a location for new files.
  */
-void DocumentManager::setDefaultLocationForNewFiles(const FilePath &location)
+void DocumentManager::setDefaultLocationForNewFiles(const QString &location)
 {
     d->m_defaultLocationForNewFiles = location;
 }
@@ -1507,7 +1492,7 @@ void DocumentManager::setUseProjectsDirectory(bool useProjectsDirectory)
 
 */
 
-FilePath DocumentManager::fileDialogLastVisitedDirectory()
+QString DocumentManager::fileDialogLastVisitedDirectory()
 {
     return d->m_lastVisitedDirectory;
 }
@@ -1521,12 +1506,12 @@ FilePath DocumentManager::fileDialogLastVisitedDirectory()
 
   */
 
-void DocumentManager::setFileDialogLastVisitedDirectory(const FilePath &directory)
+void DocumentManager::setFileDialogLastVisitedDirectory(const QString &directory)
 {
     d->m_lastVisitedDirectory = directory;
 }
 
-void DocumentManager::notifyFilesChangedInternally(const FilePaths &filePaths)
+void DocumentManager::notifyFilesChangedInternally(const Utils::FilePaths &filePaths)
 {
     emit m_instance->filesChangedInternally(filePaths);
 }

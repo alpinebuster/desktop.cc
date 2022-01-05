@@ -1,4 +1,4 @@
-include(../../qtcreator.pri)
+include(../../mfds.pri)
 include(../shared/qtsingleapplication/qtsingleapplication.pri)
 
 TEMPLATE = app
@@ -9,13 +9,11 @@ QT -= testlib
 # work around QTBUG-74265
 win32: VERSION=
 
-HEADERS += ../tools/qtcreatorcrashhandler/crashhandlersetup.h
-SOURCES += main.cpp ../tools/qtcreatorcrashhandler/crashhandlersetup.cpp
+HEADERS += $$PWD/qtcreatorcrashhandler/crashhandlersetup.h
+SOURCES += main.cpp $$PWD/qtcreatorcrashhandler/crashhandlersetup.cpp
 
 RPATH_BASE = $$IDE_BIN_PATH
 include(../rpath.pri)
-
-include(../libs/qt-breakpad/qtbreakpad.pri)
 
 LIBS *= -l$$qtLibraryName(ExtensionSystem) -l$$qtLibraryName(Aggregation) -l$$qtLibraryName(Utils)
 
@@ -24,21 +22,21 @@ win32 {
     #  RC_VERSION=4,3,82,0 (quadruple)
     #  RC_VERSION_STRING="4.4.0-beta1" (free text)
     # Also, we need to replace space with \x20 to be able to work with both rc and windres
-    COPYRIGHT = "2008-$${QTCREATOR_COPYRIGHT_YEAR} The Qt Company Ltd"
+    COPYRIGHT = "2020-$${QTCREATOR_COPYRIGHT_YEAR} MILab"
     APPLICATION_NAME = "$${IDE_DISPLAY_NAME}"
     DEFINES += \
         RC_APPLICATION_NAME=\"$$replace(APPLICATION_NAME, " ", "\\x20")\" \
         RC_VERSION=$$replace(QTCREATOR_VERSION, "\\.", ","),0 \
         RC_VERSION_STRING=\"$${QTCREATOR_DISPLAY_VERSION}\" \
-        RC_COPYRIGHT=\"$$replace(COPYRIGHT, " ", "\\x20")\" \
-        RC_ICON_PATH=.
-    RC_FILE = qtcreator.rc
+        RC_COPYRIGHT=\"$$replace(COPYRIGHT, " ", "\\x20")\"
+    RC_FILE = mfds.rc
 } else:macx {
     LIBS += -framework CoreFoundation
-    QMAKE_ASSET_CATALOGS = $$PWD/qtcreator.xcassets
+    # ICON for mac
+    QMAKE_ASSET_CATALOGS = $$PWD/mfds.xcassets
     QMAKE_ASSET_CATALOGS_BUILD_PATH = $$IDE_DATA_PATH
     QMAKE_ASSET_CATALOGS_INSTALL_PATH = $$INSTALL_DATA_PATH
-    QMAKE_ASSET_CATALOGS_APP_ICON = qtcreator
+    QMAKE_ASSET_CATALOGS_APP_ICON = mfds
 
     infoplist = $$cat($$PWD/app-Info.plist, blob)
     infoplist = $$replace(infoplist, \\$\\{MACOSX_DEPLOYMENT_TARGET\\}, $$QMAKE_MACOSX_DEPLOYMENT_TARGET)
@@ -54,7 +52,7 @@ win32 {
 target.path = $$INSTALL_APP_PATH
 INSTALLS += target
 
-DISTFILES += qtcreator.rc \
+DISTFILES += mfds.rc \
     Info.plist \
     $$PWD/app_version.h.in
 

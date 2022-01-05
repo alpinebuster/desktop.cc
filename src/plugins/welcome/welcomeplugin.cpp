@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "introductionwidget.h"
 
 #include <extensionsystem/iplugin.h>
@@ -88,7 +63,7 @@ static QFont sizedFont(int size, const QWidget *widget, bool underline = false)
 static QPalette lightText()
 {
     QPalette pal;
-    pal.setColor(QPalette::WindowText, themeColor(Theme::Welcome_ForegroundPrimaryColor));
+    pal.setColor(QPalette::WindowText, themeColor(Theme::Welcome_LinkColor));
     return pal;
 }
 
@@ -127,7 +102,7 @@ private:
 class WelcomePlugin final : public ExtensionSystem::IPlugin
 {
     Q_OBJECT
-    Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QtCreatorPlugin" FILE "Welcome.json")
+    Q_PLUGIN_METADATA(IID "org.milab.Qt.MFDSPlugin" FILE "Welcome.json")
 
 public:
     ~WelcomePlugin() final { delete m_welcomeMode; }
@@ -175,18 +150,17 @@ public:
         : QWidget(parent), m_iconSource(iconSource), m_title(title), m_openUrl(openUrl)
     {
         setAutoFillBackground(true);
-        setMinimumHeight(35);
+        setMinimumHeight(30);
         setToolTip(m_openUrl);
 
         const QString fileName = QString(":/welcome/images/%1.png").arg(iconSource);
-        const Icon icon({{FilePath::fromString(fileName), Theme::Welcome_ForegroundPrimaryColor}},
-                        Icon::Tint);
+        const Icon icon({{fileName, Theme::Welcome_ForegroundPrimaryColor}}, Icon::Tint);
 
         m_icon = new QLabel;
         m_icon->setPixmap(icon.pixmap());
 
         m_label = new QLabel(title);
-        m_label->setFont(sizedFont(11, m_label, false));
+        m_label->setFont(sizedFont(12, m_label, true));
 
         auto layout = new QHBoxLayout;
         layout->setContentsMargins(lrPadding, 0, lrPadding, 0);
@@ -244,43 +218,59 @@ public:
         vbox->setContentsMargins(0, 27, 0, 0);
 
         {
-            auto l = m_pluginButtons = new QVBoxLayout;
+            auto l = new QVBoxLayout;
             l->setContentsMargins(lrPadding, 0, lrPadding, 0);
-            l->setSpacing(19);
+            l->setSpacing(12);
+
+            // MILab LOGO
+            auto milabLogoLabel = new QLabel(tr("MILab"), this);
+            milabLogoLabel->setFont(sizedFont(18, this));
+            QPixmap qp=QPixmap(":/core/images/logo/128/milab_logo.png");
+            milabLogoLabel->setPixmap(qp);
+            l->addWidget(milabLogoLabel);
+            l->addSpacing(27);
+
+            // Get Started Now
+            auto getStartedButton = new WelcomePageButton(this);
+            getStartedButton->setText(tr("Get Started Now"));
+            getStartedButton->setOnClicked([] {
+                // QDesktopServices::openUrl(QString("https://scumed.machineilab.org"));
+                // New project
+                if (!ICore::isNewItemDialogRunning()) {
+                    ICore::showNewItemDialog(tr("New Project", "Title of dialog"),
+                                             IWizardFactory::allWizardFactories(), QString());
+                } else {
+                    ICore::raiseWindow(ICore::newItemDialog());
+                }
+            });
+            l->addWidget(getStartedButton);
+
+            // TODO - Jump to Chat (version 2)
+            auto jump2ChatButton = new WelcomePageButton(this);
+            jump2ChatButton->setText(tr("Chat"));
+            jump2ChatButton->setOnClicked([] {
+                QDesktopServices::openUrl(QString("https://scumed.machineilab.org"));
+            });
+            l->addWidget(jump2ChatButton);
+
+            // TODO - Mine, may create a new plugin (e.g.MineWelcomePage)
+            // In Mine page, add a way to jump to Genertal Settings
+            auto mineButton = new WelcomePageButton(this);
+            mineButton->setText(tr("Mine"));
+            mineButton->setOnClicked([] {
+                QDesktopServices::openUrl(QString("https://scumed.machineilab.org"));
+            });
+            l->addWidget(mineButton);
+
             vbox->addItem(l);
         }
 
         addWeakVerticalSpacerToLayout(vbox, 62);
 
         {
-            auto l = new QVBoxLayout;
+            auto l = m_pluginButtons = new QVBoxLayout;
             l->setContentsMargins(lrPadding, 0, lrPadding, 0);
-            l->setSpacing(12);
-
-            auto newLabel = new QLabel(tr("New to Qt?"), this);
-            newLabel->setFont(sizedFont(18, this));
-            l->addWidget(newLabel);
-
-            auto learnLabel = new QLabel(tr("Learn how to develop your own applications "
-                                            "and explore %1.")
-                                         .arg(Core::Constants::IDE_DISPLAY_NAME), this);
-            learnLabel->setMaximumWidth(200);
-            learnLabel->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-            learnLabel->setWordWrap(true);
-            learnLabel->setFont(sizedFont(12, this));
-            learnLabel->setPalette(lightText());
-            l->addWidget(learnLabel);
-
-            l->addSpacing(8);
-
-            auto getStartedButton = new WelcomePageButton(this);
-            getStartedButton->setText(tr("Get Started Now"));
-            getStartedButton->setOnClicked([] {
-                QDesktopServices::openUrl(
-                    QString("qthelp://org.qt-project.qtcreator/doc/creator-getting-started.html"));
-            });
-            l->addWidget(getStartedButton);
-
+            l->setSpacing(19);
             vbox->addItem(l);
         }
 
@@ -289,12 +279,18 @@ public:
         {
             auto l = new QVBoxLayout;
             l->setContentsMargins(0, 0, 0, 0);
-            l->addWidget(new IconAndLink("download", tr("Get Qt"), "https://www.qt.io/download", this));
-            l->addWidget(new IconAndLink("qtaccount", tr("Qt Account"), "https://account.qt.io", this));
-            l->addWidget(new IconAndLink("community", tr("Online Community"), "https://forum.qt.io", this));
-            l->addWidget(new IconAndLink("blogs", tr("Blogs"), "https://planet.qt.io", this));
-            l->addWidget(new IconAndLink("userguide", tr("User Guide"),
-                                         "qthelp://org.qt-project.qtcreator/doc/index.html", this));
+            l->setSpacing(5);
+            /* Move this to mode support
+            l->addWidget(new IconAndLink("userguide",          tr("User Guide"),
+                                         "https://scumed.machineilab.org", this));
+            l->addWidget(new IconAndLink("account",            tr("Account"),
+                                         "https://scumed.machineilab.org", this));
+            l->addWidget(new IconAndLink("community",          tr("Community"),
+                                         "https://scumed.machineilab.org", this));
+            l->addWidget(new IconAndLink("download",           tr("Get MFDS"),
+                                         "https://scumed.machineilab.org", this));*/
+            l->addWidget(new IconAndLink("mode_welcome@16x16", tr("MILab"),
+                                         "https://scumed.machineilab.org", this));
             vbox->addItem(l);
         }
 
@@ -308,16 +304,16 @@ WelcomeMode::WelcomeMode()
 {
     setDisplayName(tr("Welcome"));
 
-    const Icon CLASSIC(":/welcome/images/mode_welcome.png");
-    const Icon FLAT({{":/welcome/images/mode_welcome_mask.png",
+    const Icon CLASSIC(":/welcome/images/mode_welcome@24x24.png");
+    const Icon FLAT({{":/welcome/images/mode_welcome_mask@24x24.png",
                       Theme::IconsBaseColor}});
-    const Icon FLAT_ACTIVE({{":/welcome/images/mode_welcome_mask.png",
+    const Icon FLAT_ACTIVE({{":/welcome/images/mode_welcome_mask@24x24.png",
                              Theme::IconsModeWelcomeActiveColor}});
     setIcon(Icon::modeIcon(CLASSIC, FLAT, FLAT_ACTIVE));
 
     setPriority(Constants::P_MODE_WELCOME);
     setId(Constants::MODE_WELCOME);
-    setContextHelp("Qt Creator Manual");
+    setContextHelp("Manual");
     setContext(Context(Constants::C_WELCOME_MODE));
 
     QPalette palette = creatorTheme()->palette();
@@ -352,7 +348,6 @@ WelcomeMode::WelcomeMode()
     auto layout = new QVBoxLayout(m_modeWidget);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
-    layout->addWidget(new StyledBar(m_modeWidget));
     layout->addItem(hbox);
 
     setWidget(m_modeWidget);
@@ -388,19 +383,10 @@ void WelcomeMode::initPlugins()
 
 bool WelcomeMode::openDroppedFiles(const QList<QUrl> &urls)
 {
-//    DropArea {
-//        anchors.fill: parent
-//        keys: ["text/uri-list"]
-//        onDropped: {
-//            if ((drop.supportedActions & Qt.CopyAction != 0)
-//                    && welcomeMode.openDroppedFiles(drop.urls))
-//                drop.accept(Qt.CopyAction);
-//        }
-//    }
     const QList<QUrl> localUrls = Utils::filtered(urls, &QUrl::isLocalFile);
     if (!localUrls.isEmpty()) {
         QTimer::singleShot(0, [localUrls]() {
-            ICore::openFiles(Utils::transform(localUrls, &FilePath::fromUrl), ICore::SwitchMode);
+            ICore::openFiles(Utils::transform(localUrls, &QUrl::toLocalFile), ICore::SwitchMode);
         });
         return true;
     }

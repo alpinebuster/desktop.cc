@@ -1,9 +1,9 @@
-# Creates targets for building Qt Creator documentation
+# Creates targets for building documentation
 #
-# Usage: Include qtcreator.pri and define DOC_FILES to point to a list of qdocconf files,
+# Usage: Include mfds.pri and define DOC_FILES to point to a list of qdocconf files,
 #        then include this .pri file
 
-isEmpty(VERSION): error("Include qtcreator.pri before including docs.pri!")
+isEmpty(VERSION): error("Include mfds.pri before including docs.pri!")
 
 qtcname.name = IDE_DISPLAY_NAME
 qtcname.value = "$$IDE_DISPLAY_NAME"

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include <coreplugin/core_global.h>
@@ -84,17 +59,17 @@ public:
 
     static QString allDocumentFactoryFiltersString(QString *allFilesFilter);
 
-    static Utils::FilePaths getOpenFileNames(const QString &filters,
-                                             const Utils::FilePath &path = {},
-                                             QString *selectedFilter = nullptr);
-    static Utils::FilePath getSaveFileName(const QString &title,
-                                           const Utils::FilePath &pathIn,
-                                           const QString &filter = {},
-                                           QString *selectedFilter = nullptr);
-    static Utils::FilePath getSaveFileNameWithExtension(const QString &title,
-                                                        const Utils::FilePath &pathIn,
-                                                        const QString &filter);
-    static Utils::FilePath getSaveAsFileName(const IDocument *document);
+    static QStringList getOpenFileNames(const QString &filters,
+                                        const QString &path = QString(),
+                                        QString *selectedFilter = nullptr);
+    static QString getOpenFolderName(const QString &path = QString());
+    static QString getSaveFileName(const QString &title,
+                                   const QString &pathIn,
+                                   const QString &filter = QString(),
+                                   QString *selectedFilter = nullptr);
+    static QString getSaveFileNameWithExtension(const QString &title, const QString &pathIn,
+                                         const QString &filter);
+    static QString getSaveAsFileName(const IDocument *document);
 
     static bool saveAllModifiedDocumentsSilently(bool *canceled = nullptr,
                                                  QList<IDocument *> *failedToClose = nullptr);
@@ -124,13 +99,13 @@ public:
                                      QList<IDocument *> *failedToClose = nullptr);
     static void showFilePropertiesDialog(const Utils::FilePath &filePath);
 
-    static Utils::FilePath fileDialogLastVisitedDirectory();
-    static void setFileDialogLastVisitedDirectory(const Utils::FilePath &);
+    static QString fileDialogLastVisitedDirectory();
+    static void setFileDialogLastVisitedDirectory(const QString &);
 
-    static Utils::FilePath fileDialogInitialDirectory();
+    static QString fileDialogInitialDirectory();
 
-    static Utils::FilePath defaultLocationForNewFiles();
-    static void setDefaultLocationForNewFiles(const Utils::FilePath &location);
+    static QString defaultLocationForNewFiles();
+    static void setDefaultLocationForNewFiles(const QString &location);
 
     static bool useProjectsDirectory();
     static void setUseProjectsDirectory(bool);
@@ -153,8 +128,6 @@ signals:
                          const Utils::FilePath &from,
                          const Utils::FilePath &to);
     void projectsDirectoryChanged(const Utils::FilePath &directory);
-
-    void filesChangedExternally(const QSet<Utils::FilePath> &filePaths);
 
 private:
     explicit DocumentManager(QObject *parent);

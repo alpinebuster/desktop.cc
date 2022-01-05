@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "projectexplorericons.h"
 
 using namespace Utils;
@@ -64,8 +39,8 @@ const Icon DEVICE_DISCONNECTED_INDICATOR({
         {":/utils/images/filledcircle.png", Theme::IconsStopColor}}, Icon::Tint);
 const Icon DEVICE_DISCONNECTED_INDICATOR_OVERLAY({
         {":/projectexplorer/images/devicestatusindicator.png", Theme::IconsStopToolBarColor}});
-const Icon WIZARD_IMPORT_AS_PROJECT({
-        {":/projectexplorer/images/importasproject.png", Theme::PanelTextColorDark}}, Icon::Tint);
+const Icon WIZARD_IMPORT_AS_PROJECT(
+        ":/projectexplorer/images/importasproject.png");
 
 const Icon DEBUG_START_FLAT({
         {":/projectexplorer/images/run_mask.png", Theme::IconsRunToolBarColor},
@@ -94,6 +69,8 @@ const Icon BUILDSTEP_REMOVE({
 
 const Icon DESKTOP_DEVICE({
         {":/projectexplorer/images/desktopdevice.png", Theme::IconsBaseColor}});
+const Icon DESKTOP_DEVICE_SMALL({
+        {":/utils/images/desktopdevicesmall.png", Theme::PanelTextColorDark}}, Icon::Tint);
 
 const Icon MODE_PROJECT_CLASSIC(":/projectexplorer/images/mode_project.png");
 const Icon MODE_PROJECT_FLAT({

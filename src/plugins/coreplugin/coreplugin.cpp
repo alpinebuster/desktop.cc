@@ -1,46 +1,18 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "coreplugin.h"
 #include "designmode.h"
-#include "editmode.h"
-#include "foldernavigationwidget.h"
+#include "homemode.h"
 #include "helpmanager.h"
 #include "icore.h"
 #include "idocument.h"
 #include "iwizardfactory.h"
 #include "mainwindow.h"
 #include "modemanager.h"
+#include "reaper_p.h"
 #include "themechooser.h"
 
 #include <coreplugin/actionmanager/actionmanager.h>
 #include <coreplugin/documentmanager.h>
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/find/findplugin.h>
-#include <coreplugin/find/searchresultwindow.h>
-#include <coreplugin/locator/locator.h>
+#include <coreplugin/homemanager/homemanager.h>
 #include <coreplugin/coreconstants.h>
 #include <coreplugin/fileutils.h>
 
@@ -92,7 +64,6 @@ void CorePlugin::setupSystemEnvironment()
 CorePlugin::CorePlugin()
 {
     qRegisterMetaType<Id>();
-    qRegisterMetaType<Core::Search::TextPosition>();
     qRegisterMetaType<Utils::CommandLine>();
     qRegisterMetaType<Utils::FilePath>();
     m_instance = this;
@@ -102,10 +73,7 @@ CorePlugin::CorePlugin()
 CorePlugin::~CorePlugin()
 {
     IWizardFactory::destroyFeatureProvider();
-    Find::destroy();
 
-    delete m_locator;
-    delete m_folderNavigationWidgetFactory;
     delete m_editMode;
 
     DesignMode::destroyModeIfRequired();
@@ -162,32 +130,26 @@ bool CorePlugin::initialize(const QStringList &arguments, QString *errorMessage)
         return false;
     }
     const CoreArguments args = parseArguments(arguments);
+    Theme::initialPalette(); // Initialize palette before setting it
     Theme *themeFromArg = ThemeEntry::createTheme(args.themeId);
-    Theme *theme = themeFromArg ? themeFromArg
-                                : ThemeEntry::createTheme(ThemeEntry::themeSetting());
-    Theme::setInitialPalette(theme); // Initialize palette before setting it
-    setCreatorTheme(theme);
+    setCreatorTheme(themeFromArg ? themeFromArg
+                                 : ThemeEntry::createTheme(ThemeEntry::themeSetting()));
     InfoBar::initialize(ICore::settings());
     new ActionManager(this);
     ActionManager::setPresentationModeEnabled(args.presentationMode);
     m_mainWindow = new MainWindow;
     if (args.overrideColor.isValid())
         m_mainWindow->setOverrideColor(args.overrideColor);
-    m_locator = new Locator;
+
     std::srand(unsigned(QDateTime::currentDateTime().toSecsSinceEpoch()));
     m_mainWindow->init();
-    m_editMode = new EditMode;
+    m_editMode = new HomeMode;
     ModeManager::activateMode(m_editMode->id());
-
-    m_folderNavigationWidgetFactory = new FolderNavigationWidgetFactory;
 
     IWizardFactory::initialize();
 
     // Make sure we respect the process's umask when creating new files
     SaveFile::initializeUmask();
-
-    Find::initialize();
-    m_locator->initialize();
 
     MacroExpander *expander = Utils::globalMacroExpander();
     expander->registerVariable("CurrentDate:ISO", tr("The current date (ISO)."),
@@ -207,7 +169,7 @@ bool CorePlugin::initialize(const QStringList &arguments, QString *errorMessage)
     expander->registerVariable("Config:DefaultProjectDirectory", tr("The configured default directory for projects."),
                                []() { return DocumentManager::projectsDirectory().toString(); });
     expander->registerVariable("Config:LastFileDialogDirectory", tr("The directory last visited in a file dialog."),
-                               []() { return DocumentManager::fileDialogLastVisitedDirectory().toString(); });
+                               []() { return DocumentManager::fileDialogLastVisitedDirectory(); });
     expander->registerVariable("HostOs:isWindows",
                                tr("Is %1 running on Windows?").arg(Constants::IDE_DISPLAY_NAME),
                                []() { return QVariant(Utils::HostOsInfo::isWindowsHost()).toString(); });
@@ -253,8 +215,6 @@ bool CorePlugin::initialize(const QStringList &arguments, QString *errorMessage)
 void CorePlugin::extensionsInitialized()
 {
     DesignMode::createModeIfRequired();
-    Find::extensionsInitialized();
-    m_locator->extensionsInitialized();
     m_mainWindow->extensionsInitialized();
     if (ExtensionSystem::PluginManager::hasError()) {
         auto errorOverview = new ExtensionSystem::PluginErrorOverview(m_mainWindow);
@@ -267,7 +227,6 @@ void CorePlugin::extensionsInitialized()
 
 bool CorePlugin::delayedInitialize()
 {
-    m_locator->delayedInitialize();
     IWizardFactory::allWizardFactories(); // scan for all wizard factories
     return true;
 }
@@ -283,10 +242,8 @@ QObject *CorePlugin::remoteCommand(const QStringList & /* options */,
         });
         return nullptr;
     }
-    const FilePaths filePaths = Utils::transform(args, FilePath::fromString);
     IDocument *res = MainWindow::openFiles(
-                filePaths,
-                ICore::OpenFilesFlags(ICore::SwitchMode | ICore::CanContainLineAndColumnNumbers | ICore::SwitchSplitIfAlreadyVisible),
+                args, ICore::OpenFilesFlags(ICore::SwitchMode | ICore::CanContainLineAndColumnNumbers | ICore::SwitchSplitIfAlreadyVisible),
                 workingDirectory);
     m_mainWindow->raiseWindow();
     return res;
@@ -329,7 +286,7 @@ void CorePlugin::addToPathChooserContextMenu(Utils::PathChooser *pathChooser, QM
     if (QDir().exists(pathChooser->filePath().toString())) {
         auto *showInGraphicalShell = new QAction(Core::FileUtils::msgGraphicalShellAction(), menu);
         connect(showInGraphicalShell, &QAction::triggered, pathChooser, [pathChooser]() {
-            Core::FileUtils::showInGraphicalShell(pathChooser, pathChooser->filePath());
+            Core::FileUtils::showInGraphicalShell(pathChooser, pathChooser->filePath().toString());
         });
         menu->insertAction(firstAction, showInGraphicalShell);
 
@@ -338,7 +295,7 @@ void CorePlugin::addToPathChooserContextMenu(Utils::PathChooser *pathChooser, QM
             if (pathChooser->openTerminalHandler())
                 pathChooser->openTerminalHandler()();
             else
-                FileUtils::openTerminal(pathChooser->filePath());
+                FileUtils::openTerminal(pathChooser->filePath().toString());
         });
         menu->insertAction(firstAction, showInTerminal);
 
@@ -406,11 +363,11 @@ void CorePlugin::warnAboutCrashReporing()
                  "To enable this feature go to %2.");
 
     if (Utils::HostOsInfo::isMacHost()) {
-        warnStr = warnStr.arg(QLatin1String(Core::Constants::IDE_DISPLAY_NAME),
-                              Core::Constants::IDE_DISPLAY_NAME + tr(" > Preferences > Environment > System"));
+        warnStr = warnStr.arg(Core::Constants::IDE_DISPLAY_NAME)
+                         .arg(Core::Constants::IDE_DISPLAY_NAME + tr(" > Preferences > General > System"));
     } else {
-        warnStr = warnStr.arg(QLatin1String(Core::Constants::IDE_DISPLAY_NAME),
-                              tr("Tools > Options > Environment > System"));
+        warnStr = warnStr.arg(Core::Constants::IDE_DISPLAY_NAME)
+                         .arg(tr("Tools > Options > General > System"));
     }
 
     Utils::InfoBarEntry info(kWarnCrashReportingSetting, warnStr,
@@ -449,9 +406,6 @@ QString CorePlugin::msgCrashpadInformation()
 
 ExtensionSystem::IPlugin::ShutdownFlag CorePlugin::aboutToShutdown()
 {
-    Find::aboutToShutdown();
-    ExtensionSystem::IPlugin::ShutdownFlag shutdownFlag = m_locator->aboutToShutdown(
-        [this] { emit asynchronousShutdownFinished(); });
     m_mainWindow->aboutToShutdown();
-    return shutdownFlag;
+    return ExtensionSystem::IPlugin::ShutdownFlag::AsynchronousShutdown;
 }

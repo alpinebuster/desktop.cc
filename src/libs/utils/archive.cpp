@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2020 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "archive.h"
 
 #include "algorithm.h"
@@ -37,26 +12,23 @@
 #include <QSettings>
 #include <QTimer>
 
-namespace Utils {
-
 namespace {
 
 struct Tool
 {
-    CommandLine command;
+    QString executable;
+    QStringList arguments;
     QStringList supportedMimeTypes;
-    FilePaths additionalSearchDirs;
+    QStringList additionalSearchDirs;
+    bool nativeWindowsArguments = false;
 };
 
-} // anon
-
-static FilePaths additionalInstallDirs(const QString &registryKey, const QString &valueName)
+static QStringList additionalInstallDirs(const QString &registryKey, const QString &valueName)
 {
 #if defined(Q_OS_WIN)
     const QSettings settings64(registryKey, QSettings::Registry64Format);
     const QSettings settings32(registryKey, QSettings::Registry32Format);
-    return {FilePath::fromVariant(settings64.value(valueName)),
-            FilePath::fromVariant(settings32.value(valueName))};
+    return {settings64.value(valueName).toString(), settings32.value(valueName).toString()};
 #else
     Q_UNUSED(registryKey)
     Q_UNUSED(valueName)
@@ -68,42 +40,48 @@ static const QVector<Tool> &sTools()
 {
     static QVector<Tool> tools;
     if (tools.isEmpty()) {
-        if (HostOsInfo::isWindowsHost()) {
-            tools << Tool{{"powershell", "-command Expand-Archive -Force '%{src}' '%{dest}'", CommandLine::Raw},
+        if (Utils::HostOsInfo::isWindowsHost()) {
+            tools << Tool{{"powershell"},
+                          {"-command Expand-Archive -Force '%{src}' '%{dest}'"},
                           {"application/zip"},
-                          {}};
+                          {},
+                          true};
         }
-        tools << Tool{{"unzip", {"-o", "%{src}", "-d", "%{dest}"}}, {"application/zip"}, {}};
-        tools << Tool{{"7z", {"x", "-o%{dest}", "-y", "-bb", "%{src}"}},
+        tools << Tool{{"unzip"}, {"-o", "%{src}", "-d", "%{dest}"}, {"application/zip"}, {}};
+        tools << Tool{{"7z"},
+                      {"x", "-o%{dest}", "-y", "-bb", "%{src}"},
                       {"application/zip", "application/x-7z-compressed"},
                       additionalInstallDirs("HKEY_CURRENT_USER\\Software\\7-Zip", "Path")};
-        tools << Tool{{"tar", {"xvf", "%{src}"}},
+        tools << Tool{{"tar"},
+                      {"xvf", "%{src}"},
                       {"application/zip", "application/x-tar", "application/x-7z-compressed"},
                       {}};
-        tools << Tool{{"tar", {"xvzf", "%{src}"}}, {"application/x-compressed-tar"}, {}};
-        tools << Tool{{"tar", {"xvJf", "%{src}"}}, {"application/x-xz-compressed-tar"}, {}};
-        tools << Tool{{"tar", {"xvjf", "%{src}"}}, {"application/x-bzip-compressed-tar"}, {}};
-
-        const FilePaths additionalCMakeDirs =
-                additionalInstallDirs("HKEY_LOCAL_MACHINE\\SOFTWARE\\Kitware\\CMake",
-                                      "InstallDir");
-        tools << Tool{{"cmake", {"-E", "tar", "xvf", "%{src}"}},
+        tools << Tool{{"tar"}, {"xvzf", "%{src}"}, {"application/x-compressed-tar"}, {}};
+        tools << Tool{{"tar"}, {"xvJf", "%{src}"}, {"application/x-xz-compressed-tar"}, {}};
+        tools << Tool{{"tar"}, {"xvjf", "%{src}"}, {"application/x-bzip-compressed-tar"}, {}};
+        const QStringList additionalCMakeDirs = additionalInstallDirs(
+            "HKEY_LOCAL_MACHINE\\SOFTWARE\\Kitware\\CMake", "InstallDir");
+        tools << Tool{{"cmake"},
+                      {"-E", "tar", "xvf", "%{src}"},
                       {"application/zip", "application/x-tar", "application/x-7z-compressed"},
                       additionalCMakeDirs};
-        tools << Tool{{"cmake", {"-E", "tar", "xvzf", "%{src}"}},
+        tools << Tool{{"cmake"},
+                      {"-E", "tar", "xvzf", "%{src}"},
                       {"application/x-compressed-tar"},
                       additionalCMakeDirs};
-        tools << Tool{{"cmake", {"-E", "tar", "xvJf", "%{src}"}},
+        tools << Tool{{"cmake"},
+                      {"-E", "tar", "xvJf", "%{src}"},
                       {"application/x-xz-compressed-tar"},
                       additionalCMakeDirs};
-        tools << Tool{{"cmake", {"-E", "tar", "xvjf", "%{src}"}},
+        tools << Tool{{"cmake"},
+                      {"-E", "tar", "xvjf", "%{src}"},
                       {"application/x-bzip-compressed-tar"},
                       additionalCMakeDirs};
     }
     return tools;
 }
 
-static QVector<Tool> toolsForMimeType(const MimeType &mimeType)
+static QVector<Tool> toolsForMimeType(const Utils::MimeType &mimeType)
 {
     return Utils::filtered(sTools(), [mimeType](const Tool &tool) {
         return Utils::anyOf(tool.supportedMimeTypes,
@@ -111,21 +89,24 @@ static QVector<Tool> toolsForMimeType(const MimeType &mimeType)
     });
 }
 
-static QVector<Tool> toolsForFilePath(const FilePath &fp)
+static QVector<Tool> toolsForFilePath(const Utils::FilePath &fp)
 {
     return toolsForMimeType(Utils::mimeTypeForFile(fp));
 }
 
 static Utils::optional<Tool> resolveTool(const Tool &tool)
 {
-    const FilePath executable =
-        tool.command.executable().withExecutableSuffix().searchInPath(tool.additionalSearchDirs);
+    const QString executable
+        = Utils::Environment::systemEnvironment()
+              .searchInPath(Utils::HostOsInfo::withExecutableSuffix(tool.executable),
+                            Utils::transform(tool.additionalSearchDirs, &Utils::FilePath::fromString))
+              .toString();
     Tool resolvedTool = tool;
-    resolvedTool.command.setExecutable(executable);
+    resolvedTool.executable = executable;
     return executable.isEmpty() ? Utils::nullopt : Utils::make_optional(resolvedTool);
 }
 
-static Utils::optional<Tool> unzipTool(const FilePath &src, const FilePath &dest)
+Utils::optional<Tool> unzipTool(const Utils::FilePath &src, const Utils::FilePath &dest)
 {
     const QVector<Tool> tools = toolsForFilePath(src);
     for (const Tool &tool : tools) {
@@ -134,13 +115,20 @@ static Utils::optional<Tool> unzipTool(const FilePath &src, const FilePath &dest
             Tool result = *resolvedTool;
             const QString srcStr = src.toString();
             const QString destStr = dest.toString();
-            const QString args = result.command.arguments().replace("%{src}", srcStr).replace("%{dest}", destStr);
-            result.command.setArguments(args);
+            result.arguments
+                = Utils::transform(result.arguments, [srcStr, destStr](const QString &a) {
+                      QString val = a;
+                      return val.replace("%{src}", srcStr).replace("%{dest}", destStr);
+                  });
             return result;
         }
     }
     return {};
 }
+
+} // namespace
+
+namespace Utils {
 
 bool Archive::supportsFile(const FilePath &filePath, QString *reason)
 {
@@ -150,14 +138,10 @@ bool Archive::supportsFile(const FilePath &filePath, QString *reason)
             *reason = tr("File format not supported.");
         return false;
     }
-    if (!anyOf(tools, [tools](const Tool &t) { return resolveTool(t); })) {
-        if (reason) {
-            const QStringList execs = transform<QStringList>(tools, [](const Tool &tool) {
-                return tool.command.executable().toString();
-            });
+    if (!anyOf(tools, [](const Tool &t) { return resolveTool(t); })) {
+        if (reason)
             *reason = tr("Could not find any unarchiving executable in PATH (%1).")
-                          .arg(execs.join(", "));
-        }
+                          .arg(transform<QStringList>(tools, &Tool::executable).join(", "));
         return false;
     }
     return true;
@@ -196,8 +180,8 @@ Archive *Archive::unarchive(const FilePath &src, const FilePath &dest)
 
     auto archive = new Archive;
 
-    const FilePath workingDirectory = dest.absolutePath();
-    workingDirectory.ensureWritableDir();
+    const QString workingDirectory = dest.toFileInfo().absoluteFilePath();
+    QDir(workingDirectory).mkpath(".");
 
     archive->m_process = new QtcProcess;
     archive->m_process->setProcessChannelMode(QProcess::MergedChannels);
@@ -208,8 +192,7 @@ Archive *Archive::unarchive(const FilePath &src, const FilePath &dest)
         [archive]() {
             if (!archive->m_process)
                 return;
-            emit archive->outputReceived(QString::fromUtf8(
-                                             archive->m_process->readAllStandardOutput()));
+            archive->outputReceived(QString::fromUtf8(archive->m_process->readAllStandardOutput()));
         },
         Qt::QueuedConnection);
     QObject::connect(
@@ -219,7 +202,7 @@ Archive *Archive::unarchive(const FilePath &src, const FilePath &dest)
         [archive] {
             if (!archive->m_process)
                 return;
-            emit archive->finished(archive->m_process->result() == QtcProcess::FinishedWithSuccess);
+            archive->finished(archive->m_process->result() == QtcProcess::FinishedWithSuccess);
             archive->m_process->deleteLater();
             archive->m_process = nullptr;
             archive->deleteLater();
@@ -232,8 +215,8 @@ Archive *Archive::unarchive(const FilePath &src, const FilePath &dest)
         [archive](QProcess::ProcessError) {
             if (!archive->m_process)
                 return;
-            emit archive->outputReceived(tr("Command failed."));
-            emit archive->finished(false);
+            archive->outputReceived(tr("Command failed."));
+            archive->finished(false);
             archive->m_process->deleteLater();
             archive->m_process = nullptr;
             archive->deleteLater();
@@ -241,13 +224,18 @@ Archive *Archive::unarchive(const FilePath &src, const FilePath &dest)
         Qt::QueuedConnection);
 
     QTimer::singleShot(0, archive, [archive, tool, workingDirectory] {
-        emit archive->outputReceived(
+        archive->outputReceived(
             tr("Running %1\nin \"%2\".\n\n", "Running <cmd> in <workingdirectory>")
-                .arg(tool->command.toUserOutput(), workingDirectory.toUserOutput()));
+                .arg(CommandLine(tool->executable, tool->arguments).toUserOutput(),
+                     workingDirectory));
     });
 
-    archive->m_process->setCommand(tool->command);
+    CommandLine cmd = tool->nativeWindowsArguments
+        ? CommandLine{FilePath::fromString(tool->executable), tool->arguments[0], CommandLine::Raw}
+        : CommandLine{tool->executable, tool->arguments};
+    archive->m_process->setCommand(cmd);
     archive->m_process->setWorkingDirectory(workingDirectory);
+    archive->m_process->setOpenMode(QProcess::ReadOnly);
     archive->m_process->start();
     return archive;
 }

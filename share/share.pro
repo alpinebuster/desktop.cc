@@ -1,18 +1,18 @@
 TEMPLATE = subdirs
-SUBDIRS = qtcreator/static.pro
+SUBDIRS = mfds/static.pro
 
-include(../qtcreator.pri)
+include(../mfds.pri)
 
 linux {
-    appdata = $$cat($$PWD/metainfo/org.qt-project.qtcreator.appdata.xml.cmakein, blob)
+    appdata = $$cat($$PWD/metainfo/org.milab.mfds.appdata.xml.cmakein, blob)
     appdata = $$replace(appdata, \\$\\{IDE_VERSION_DISPLAY\\}, $$QTCREATOR_DISPLAY_VERSION)
     appdata = $$replace(appdata, \\$\\{DATE_ATTRIBUTE\\}, "")
-    write_file($$OUT_PWD/metainfo/org.qt-project.qtcreator.appdata.xml, appdata)
+    write_file($$OUT_PWD/metainfo/org.milab.mfds.appdata.xml, appdata)
 
-    appstream.files = $$OUT_PWD/metainfo/org.qt-project.qtcreator.appdata.xml
+    appstream.files = $$OUT_PWD/metainfo/org.milab.mfds.appdata.xml
     appstream.path = $$QTC_PREFIX/share/metainfo/
 
-    desktop.files = share/applications/org.qt-project.qtcreator.desktop
+    desktop.files = share/applications/org.milab.mfds.desktop
     desktop.path = $$QTC_PREFIX/share/applications/
 
     INSTALLS += appstream desktop
@@ -31,7 +31,8 @@ defineTest(hasLupdate) {
     return(false)
 }
 
-hasLupdate(): SUBDIRS += qtcreator/translations
+# Translation folder
+hasLupdate(): SUBDIRS += mfds/translations
 
 DISTFILES += share.qbs \
     ../src/share/share.qbs

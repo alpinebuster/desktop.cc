@@ -26,7 +26,7 @@
 /*!
     \page studio-terms.html
     \previouspage studio-use-cases.html
-    \nextpage {Examples}
+    \nextpage {Examples and Tutorials}
 
     \title Concepts and Terms
 
@@ -193,7 +193,7 @@
     example, if you create a 3D project, preset 3D components are added to it.
     You can add more preset components in \uicontrol Library.
 
-    \image studio-project-wizards.png "New Project dialog"
+    \image studio-project-wizards.png "New File or Project dialog"
 
     Read more about projects:
 

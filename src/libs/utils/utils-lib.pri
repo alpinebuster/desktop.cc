@@ -4,6 +4,15 @@ shared {
     DEFINES += QTCREATOR_UTILS_STATIC_LIB
 }
 
+!win32:{
+    isEmpty(IDE_LIBEXEC_PATH) | isEmpty(IDE_BIN_PATH): {
+        warning("using utils-lib.pri without IDE_LIBEXEC_PATH or IDE_BIN_PATH results in empty QTC_REL_TOOLS_PATH")
+        DEFINES += QTC_REL_TOOLS_PATH=$$shell_quote(\"\")
+    } else {
+        DEFINES += QTC_REL_TOOLS_PATH=$$shell_quote(\"$$relative_path($$IDE_LIBEXEC_PATH, $$IDE_BIN_PATH)\")
+    }
+}
+
 QT += widgets gui network qml xml
 greaterThan(QT_MAJOR_VERSION, 5): QT += core5compat
 
@@ -53,7 +62,6 @@ SOURCES += \
     $$PWD/fancylineedit.cpp \
     $$PWD/qtcolorbutton.cpp \
     $$PWD/savefile.cpp \
-    $$PWD/filepath.cpp \
     $$PWD/fileutils.cpp \
     $$PWD/textfileformat.cpp \
     $$PWD/consoleprocess.cpp \
@@ -84,8 +92,6 @@ SOURCES += \
     $$PWD/json.cpp \
     $$PWD/portlist.cpp \
     $$PWD/processhandle.cpp \
-    $$PWD/processreaper.cpp \
-    $$PWD/processutils.cpp \
     $$PWD/appmainwindow.cpp \
     $$PWD/basetreeview.cpp \
     $$PWD/qtcassert.cpp \
@@ -142,9 +148,6 @@ SOURCES += \
     $$PWD/qtcsettings.cpp \
     $$PWD/link.cpp \
     $$PWD/linecolumn.cpp \
-    $$PWD/multitextcursor.cpp \
-    $$PWD/threadutils.cpp \
-    $$PWD/singleton.cpp
 
 HEADERS += \
     $$PWD/environmentfwd.h \
@@ -193,7 +196,6 @@ HEADERS += \
     $$PWD/qtcolorbutton.h \
     $$PWD/consoleprocess.h \
     $$PWD/savefile.h \
-    $$PWD/filepath.h \
     $$PWD/fileutils.h \
     $$PWD/textfileformat.h \
     $$PWD/uncommentselection.h \
@@ -226,8 +228,6 @@ HEADERS += \
     $$PWD/runextensions.h \
     $$PWD/portlist.h \
     $$PWD/processhandle.h \
-    $$PWD/processreaper.h \
-    $$PWD/processutils.h \
     $$PWD/appmainwindow.h \
     $$PWD/basetreeview.h \
     $$PWD/elfreader.h \
@@ -276,7 +276,7 @@ HEADERS += \
     $$PWD/guard.h \
     $$PWD/smallstringfwd.h \
     $$PWD/optional.h \
-    $$PWD/../3rdparty/optional/optional.hpp \
+    $$PWD/optional/optional.hpp \
     $$PWD/variant.h \
     $$PWD/../3rdparty/variant/variant.hpp \
     $$PWD/highlightingitemdelegate.h \
@@ -309,10 +309,7 @@ HEADERS += \
     $$PWD/launcherinterface.h \
     $$PWD/launcherpackets.h \
     $$PWD/launchersocket.h \
-    $$PWD/qtcsettings.h \
-    $$PWD/multitextcursor.h \
-    $$PWD/threadutils.h \
-    $$PWD/singleton.h
+    $$PWD/qtcsettings.h
 
 FORMS += $$PWD/filewizardpage.ui \
     $$PWD/projectintropage.ui \

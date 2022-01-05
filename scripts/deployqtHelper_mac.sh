@@ -67,17 +67,6 @@ if [ -d "$assetimporterSrcDir" ]; then
     fi
 fi
 
-# collect tls plugins to have ssl download feature available
-tlsDestDir="$app_path/Contents/PlugIns/tls"
-tlssrcDir="$plugin_src/tls"
-if [ -d "$tlssrcDir" ]; then
-    if [ ! -d "$tlsDestDir" ]; then
-        echo "- Copying tls plugins to have ssl download feature available"
-        mkdir -p "$tlsDestDir"
-        find "$tlssrcDir" -iname "*.dylib" -maxdepth 1 -exec cp {} "$tlsDestDir"/ \;
-    fi
-fi
-
 # workaround for Qt 6.2:
 # - QTBUG-94796 macdeployqt does not deploy /Contents/PlugIns/sqldrivers/libqsqlite.dylib anymore
 sqldriversDestDir="$app_path/Contents/PlugIns/sqldrivers"
@@ -87,18 +76,6 @@ if [ -d "$sqldriversSrcDir" ]; then
         echo "- Copying sqlitedriver plugin"
         mkdir -p "$sqldriversDestDir"
         cp "$sqldriversSrcDir/libqsqlite.dylib" "$sqldriversDestDir/libqsqlite.dylib"
-    fi
-fi
-
-# workaround for Qt 6.2:
-# - QTBUG-94796 macdeployqt does not deploy /Contents/PlugIns/imageformats/libqsvg.dylib anymore
-imageformatsDestDir="$app_path/Contents/PlugIns/imageformats"
-imageformatsSrcDir="$plugin_src/imageformats"
-if [ -d "$imageformatsSrcDir" ]; then
-    if [ ! -d "$imageformatsDestDir" ]; then
-        echo "- Copying sqlitedriver plugin"
-        mkdir -p "$imageformatsDestDir"
-        cp "$imageformatsSrcDir/libqsvg.dylib" "$imageformatsDestDir/libqsvg.dylib"
     fi
 fi
 
@@ -169,7 +146,6 @@ if [ $LLVM_INSTALL_DIR ]; then
         clazysource="$LLVM_INSTALL_DIR"/bin/clazy-standalone
         cp -Rf "$clazysource" "$libexec_path/clang/bin/" || exit 1
         install_name_tool -add_rpath "@executable_path/../lib" "$libexec_path/clang/bin/clazy-standalone" || exit 1
-        install_name_tool -delete_rpath "/Users/qt/work/build/libclang/lib" "$libexec_path/clang/bin/clazy-standalone" 2> /dev/null
     fi
     clangbackendArgument="-executable=$libexec_path/clangbackend"
 fi
@@ -188,6 +164,7 @@ if [ ! -d "$app_path/Contents/Frameworks/QtCore.framework" ]; then
         qbsArguments=("-executable=$qbsapp" \
         "-executable=$qbsapp-config" \
         "-executable=$qbsapp-config-ui" \
+        "-executable=$qbsapp-qmltypes" \
         "-executable=$qbsapp-setup-android" \
         "-executable=$qbsapp-setup-qt" \
         "-executable=$qbsapp-setup-toolchains" \

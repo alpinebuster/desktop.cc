@@ -1,33 +1,8 @@
-/****************************************************************************
-**
-** Copyright (C) 2018 Andre Hartmann <aha_1980@gmx.de>
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "filepropertiesdialog.h"
 #include "ui_filepropertiesdialog.h"
 
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/editormanager/ieditorfactory.h>
+#include <coreplugin/homemanager/homemanager.h>
+#include <coreplugin/homemanager/ieditorfactory.h>
 #include <utils/fileutils.h>
 #include <utils/mimetypes/mimedatabase.h>
 
@@ -37,14 +12,10 @@
 #include <QFileInfo>
 #include <QLocale>
 
-using namespace Utils;
-
-namespace Core {
-
-FilePropertiesDialog::FilePropertiesDialog(const FilePath &filePath, QWidget *parent) :
+FilePropertiesDialog::FilePropertiesDialog(const Utils::FilePath &fileName, QWidget *parent) :
     QDialog(parent),
     m_ui(new Ui::FilePropertiesDialog),
-    m_filePath(filePath)
+    m_fileName(fileName.toString())
 {
     m_ui->setupUi(this);
 
@@ -68,7 +39,7 @@ FilePropertiesDialog::~FilePropertiesDialog()
 
 void FilePropertiesDialog::detectTextFileSettings()
 {
-    QFile file(m_filePath.toString());
+    QFile file(m_fileName);
     if (!file.open(QIODevice::ReadOnly)) {
         m_ui->lineEndings->setText(tr("Unknown"));
         m_ui->indentation->setText(tr("Unknown"));
@@ -146,7 +117,7 @@ void FilePropertiesDialog::detectTextFileSettings()
 void FilePropertiesDialog::refresh()
 {
     Utils::withNtfsPermissions<void>([this] {
-        const QFileInfo fileInfo = m_filePath.toFileInfo();
+        const QFileInfo fileInfo(m_fileName);
         QLocale locale;
 
         m_ui->name->setText(fileInfo.fileName());
@@ -155,7 +126,7 @@ void FilePropertiesDialog::refresh()
         const Utils::MimeType mimeType = Utils::mimeTypeForFile(fileInfo);
         m_ui->mimeType->setText(mimeType.name());
 
-        const EditorFactoryList factories = IEditorFactory::preferredEditorFactories(m_filePath);
+        const Core::HomeFactoryList factories = Core::IEditorFactory::preferredEditorFactories(m_fileName);
         m_ui->defaultEditor->setText(!factories.isEmpty() ? factories.at(0)->displayName() : tr("Undefined"));
 
         m_ui->owner->setText(fileInfo.owner());
@@ -179,17 +150,15 @@ void FilePropertiesDialog::refresh()
 void FilePropertiesDialog::setPermission(QFile::Permissions newPermissions, bool set)
 {
     Utils::withNtfsPermissions<void>([this, newPermissions, set] {
-        QFile::Permissions permissions = m_filePath.permissions();
+        QFile::Permissions permissions = QFile::permissions(m_fileName);
         if (set)
             permissions |= newPermissions;
         else
             permissions &= ~newPermissions;
 
-        if (!m_filePath.setPermissions(permissions))
-            qWarning() << "Cannot change permissions for file" << m_filePath;
+        if (!QFile::setPermissions(m_fileName, permissions))
+            qWarning() << "Cannot change permissions for file" << m_fileName;
     });
 
     refresh();
 }
-
-} // Core

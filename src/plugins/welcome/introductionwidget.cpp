@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2018 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "introductionwidget.h"
 
 #include <coreplugin/icore.h>
@@ -113,25 +88,9 @@ IntroductionWidget::IntroductionWidget(QWidget *parent)
             "<tr><td style=\"padding-right: 20px\">Welcome:</td><td>Open examples, tutorials, and "
             "recent sessions and projects.</td></tr>"
             "<tr><td>Edit:</td><td>Work with code and navigate your project.</td></tr>"
-            "<tr><td>Design:</td><td>Visually edit Widget-based user interfaces, state charts and UML models.</td></tr>"
-            "<tr><td>Debug:</td><td>Analyze your application with a debugger or other "
-            "analyzers.</td></tr>"
-            "<tr><td>Projects:</td><td>Manage project settings.</td></tr>"
-            "<tr><td>Help:</td><td>Browse the help database.</td></tr>"
+            "<tr><td>Projects:</td><td>Manage projects.</td></tr>"
+            "<tr><td>Help:</td><td>Browse the help guide.</td></tr>"
             "</table></p>")},
-        {QLatin1String("KitSelector.Button"),
-         tr("Kit Selector"),
-         tr("Select the active project or project configuration."),
-         {}},
-        {QLatin1String("Run.Button"),
-         tr("Run Button"),
-         tr("Run the active project. By default this builds the project first."),
-         {}},
-        {QLatin1String("Debug.Button"),
-         tr("Debug Button"),
-         tr("Run the active project in a debugger."),
-         {}},
-        {QLatin1String("Build.Button"), tr("Build Button"), tr("Build the active project."), {}},
         {QLatin1String("LocatorInput"),
          tr("Locator"),
          tr("Type here to open a file from any open project."),
@@ -162,7 +121,7 @@ IntroductionWidget::IntroductionWidget(QWidget *parent)
          tr("The End"),
          tr("You have now completed the UI tour. To learn more about the highlighted "
             "controls, see <a style=\"color: #41CD52\" "
-            "href=\"qthelp://org.qt-project.qtcreator/doc/creator-quick-tour.html\">User "
+            "href=\"https://scumed.machineilab.org/\">User "
             "Interface</a>."),
          {}}};
     setStep(0);

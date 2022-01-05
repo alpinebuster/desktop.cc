@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "versiondialog.h"
 #include "coreicons.h"
 
@@ -58,7 +33,7 @@ VersionDialog::VersionDialog(QWidget *parent)
     QString ideRev;
 #ifdef IDE_REVISION
     const QString revUrl = QString::fromLatin1(Constants::IDE_REVISION_URL);
-    const QString rev = QString::fromLatin1(Constants::IDE_REVISION_STR);
+    const QString rev = QString::fromLatin1(Constants::IDE_REVISION_STR).left(10);
     ideRev = tr("<br/>From revision %1<br/>")
             .arg(revUrl.isEmpty() ? rev
                                   : QString::fromLatin1("<a href=\"%1\">%2</a>").arg(revUrl, rev));
@@ -80,7 +55,7 @@ VersionDialog::VersionDialog(QWidget *parent)
         "%4"
         "%5"
         "<br/>"
-        "Copyright 2008-%6 %7. All rights reserved.<br/>"
+        "Copyright 2020-%6 %7. All rights reserved.<br/>"
         "<br/>"
         "The program is provided AS IS with NO WARRANTY OF ANY KIND, "
         "INCLUDING THE WARRANTY OF DESIGN, MERCHANTABILITY AND FITNESS FOR A "

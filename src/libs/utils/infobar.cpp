@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2020 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "infobar.h"
 
 #include "algorithm.h"
@@ -63,7 +38,7 @@ InfoBarWidget::InfoBarWidget(Qt::Edge edge, QWidget *parent)
     , m_edge(edge)
 {
     const bool topEdge = m_edge == Qt::TopEdge;
-    setContentsMargins(2, topEdge ? 0 : 1, 0, topEdge ? 1 : 0);
+    setContentsMargins(9, topEdge ? 0 : 1, 2, topEdge ? 1 : 0);
 }
 
 void InfoBarWidget::paintEvent(QPaintEvent *event)
@@ -278,7 +253,6 @@ void InfoBarDisplay::update()
 
         QLabel *infoWidgetLabel = new QLabel(info.m_infoText);
         infoWidgetLabel->setWordWrap(true);
-        infoWidgetLabel->setOpenExternalLinks(true);
         hbox->addWidget(infoWidgetLabel, 1);
 
         if (info.m_detailsWidgetCreator) {
@@ -339,12 +313,12 @@ void InfoBarDisplay::update()
         QToolButton *infoWidgetCloseButton = nullptr;
         if (info.m_useCancelButton) {
             infoWidgetCloseButton = new QToolButton;
-            // need to connect to cancelObjectbefore connecting to cancelButtonClicked,
+            // Need to connect to cancelObjectbefore connecting to cancelButtonClicked,
             // because the latter removes the button and with it any connect
             if (info.m_cancelButtonCallBack)
                 connect(infoWidgetCloseButton, &QAbstractButton::clicked, info.m_cancelButtonCallBack);
             connect(infoWidgetCloseButton, &QAbstractButton::clicked, this, [this, id] {
-                m_infoBar->removeInfo(id);
+                m_infoBar->suppressInfo(id);
             });
         }
 

@@ -3,6 +3,8 @@ add_qtc_library(Utils
   PUBLIC_DEPENDS
     Qt5::Concurrent Qt5::Core Qt5::Network Qt5::Gui Qt5::Widgets
     Qt6Core5Compat
+  DEFINES
+    "QTC_REL_TOOLS_PATH=\"${RELATIVE_LIBEXEC_PATH}\""
   SOURCES
     ../3rdparty/optional/optional.hpp
     ../3rdparty/variant/variant.hpp
@@ -50,7 +52,6 @@ add_qtc_library(Utils
     filecrumblabel.cpp filecrumblabel.h
     fileinprojectfinder.cpp fileinprojectfinder.h
     filenamevalidatinglineedit.cpp filenamevalidatinglineedit.h
-    filepath.cpp filepath.h
     filesearch.cpp filesearch.h
     filesystemwatcher.cpp filesystemwatcher.h
     fileutils.cpp fileutils.h
@@ -93,7 +94,6 @@ add_qtc_library(Utils
     mimetypes/mimeprovider.cpp mimetypes/mimeprovider_p.h
     mimetypes/mimetype.cpp mimetypes/mimetype.h mimetypes/mimetype_p.h
     mimetypes/mimetypeparser.cpp mimetypes/mimetypeparser_p.h
-    multitextcursor.cpp multitextcursor.h
     namevaluedictionary.cpp namevaluedictionary.h
     namevaluedictionary.cpp namevaluedictionary.h
     namevalueitem.cpp namevalueitem.h
@@ -122,8 +122,6 @@ add_qtc_library(Utils
     portlist.cpp portlist.h
     predicates.h
     processhandle.cpp processhandle.h
-    processreaper.cpp processreaper.h
-    processutils.cpp processutils.h
     progressindicator.cpp progressindicator.h
     projectintropage.cpp projectintropage.h projectintropage.ui
     proxyaction.cpp proxyaction.h
@@ -144,7 +142,6 @@ add_qtc_library(Utils
     settingsutils.h
     shellcommand.cpp shellcommand.h
     shellcommandpage.cpp shellcommandpage.h
-    singleton.cpp singleton.h
     sizedarray.h
     smallstring.h
     smallstringfwd.h
@@ -168,7 +165,6 @@ add_qtc_library(Utils
     textfileformat.cpp textfileformat.h
     textutils.cpp textutils.h
     theme/theme.cpp theme/theme.h theme/theme_p.h
-    threadutils.cpp threadutils.h
     tooltip/effects.h
     tooltip/tips.cpp tooltip/tips.h
     tooltip/tooltip.cpp tooltip/tooltip.h

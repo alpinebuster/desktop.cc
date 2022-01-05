@@ -1,31 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "outputpanemanager.h"
 #include "outputpane.h"
-#include "findplaceholder.h"
 
 #include "icore.h"
 #include "ioutputpane.h"
@@ -36,9 +10,8 @@
 #include <coreplugin/actionmanager/actioncontainer.h>
 #include <coreplugin/actionmanager/command.h>
 #include <coreplugin/actionmanager/commandbutton.h>
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/editormanager/ieditor.h>
-#include <coreplugin/find/optionspopup.h>
+#include <coreplugin/homemanager/homemanager.h>
+#include <coreplugin/homemanager/ieditor.h>
 
 #include <utils/algorithm.h>
 #include <utils/hostosinfo.h>
@@ -79,6 +52,7 @@ public:
     Id id;
     OutputPaneToggleButton *button = nullptr;
     QAction *action = nullptr;
+    bool buttonVisible = false;
 };
 
 static QVector<OutputPaneData> g_outputPanes;
@@ -174,8 +148,8 @@ void IOutputPane::setupFilterUi(const QString &historyKey)
             this, &IOutputPane::updateFilter);
     connect(m_filterOutputLineEdit, &FancyLineEdit::returnPressed,
             this, &IOutputPane::updateFilter);
-    connect(m_filterOutputLineEdit, &FancyLineEdit::leftButtonClicked,
-            this, &IOutputPane::filterOutputButtonClicked);
+//    connect(m_filterOutputLineEdit, &FancyLineEdit::leftButtonClicked,
+//            this, &IOutputPane::filterOutputButtonClicked);
 }
 
 QString IOutputPane::filterText() const
@@ -219,12 +193,12 @@ void IOutputPane::updateFilter()
     QTC_ASSERT(false, qDebug() << "updateFilter() needs to get re-implemented");
 }
 
-void IOutputPane::filterOutputButtonClicked()
-{
-    auto popup = new Core::OptionsPopup(m_filterOutputLineEdit,
-    {filterRegexpActionId(), filterCaseSensitivityActionId(), filterInvertedActionId()});
-    popup->show();
-}
+//void IOutputPane::filterOutputButtonClicked()
+//{
+//    auto popup = new Core::OptionsPopup(m_filterOutputLineEdit,
+//    {filterRegexpActionId(), filterCaseSensitivityActionId(), filterInvertedActionId()});
+//    popup->show();
+//}
 
 void IOutputPane::setRegularExpressions(bool regularExpressions)
 {
@@ -341,12 +315,12 @@ OutputPaneManager::OutputPaneManager(QWidget *parent) :
     connect(m_clearAction, &QAction::triggered, this, &OutputPaneManager::clearPage);
 
     m_nextAction = new QAction(this);
-    m_nextAction->setIcon(Utils::Icons::ARROW_DOWN_TOOLBAR.icon());
+    m_nextAction->setIcon(Utils::Icons::NEXT.icon());
     m_nextAction->setText(tr("Next Item"));
     connect(m_nextAction, &QAction::triggered, this, &OutputPaneManager::slotNext);
 
     m_prevAction = new QAction(this);
-    m_prevAction->setIcon(Utils::Icons::ARROW_UP_TOOLBAR.icon());
+    m_prevAction->setIcon(Utils::Icons::PREV.icon());
     m_prevAction->setText(tr("Previous Item"));
     connect(m_prevAction, &QAction::triggered, this, &OutputPaneManager::slotPrev);
 
@@ -379,7 +353,7 @@ OutputPaneManager::OutputPaneManager(QWidget *parent) :
     toolLayout->addWidget(m_closeButton);
     mainlayout->addWidget(m_toolBar);
     mainlayout->addWidget(m_outputWidgetPane, 10);
-    mainlayout->addWidget(new FindToolBarPlaceHolder(this));
+//    mainlayout->addWidget(new FindToolBarPlaceHolder(this));
     setLayout(mainlayout);
 
     m_buttonsWidget = new QWidget;
@@ -410,12 +384,12 @@ OutputPaneManager::OutputPaneManager(QWidget *parent) :
     cmd = ActionManager::registerAction(m_prevAction, "Coreplugin.OutputPane.previtem");
     cmd->setDefaultKeySequence(QKeySequence(tr("Shift+F6")));
     m_prevToolButton->setDefaultAction(
-        ProxyAction::proxyActionWithIcon(m_prevAction, Utils::Icons::ARROW_UP_TOOLBAR.icon()));
+        ProxyAction::proxyActionWithIcon(m_prevAction, Utils::Icons::PREV_TOOLBAR.icon()));
     mpanes->addAction(cmd, "Coreplugin.OutputPane.ActionsGroup");
 
     cmd = ActionManager::registerAction(m_nextAction, "Coreplugin.OutputPane.nextitem");
     m_nextToolButton->setDefaultAction(
-        ProxyAction::proxyActionWithIcon(m_nextAction, Utils::Icons::ARROW_DOWN_TOOLBAR.icon()));
+        ProxyAction::proxyActionWithIcon(m_nextAction, Utils::Icons::NEXT_TOOLBAR.icon()));
     cmd->setDefaultKeySequence(QKeySequence(tr("F6")));
     mpanes->addAction(cmd, "Coreplugin.OutputPane.ActionsGroup");
 
@@ -510,6 +484,7 @@ void OutputPaneManager::initialize()
 
         bool visible = outPane->priorityInStatusBar() != -1;
         data.button->setVisible(visible);
+        data.buttonVisible = visible;
 
         connect(data.action, &QAction::triggered, m_instance, [i] {
             m_instance->shortcutTriggered(i);
@@ -593,6 +568,7 @@ void OutputPaneManager::readSettings()
         if (idx < 0) // happens for e.g. disabled plugins (with outputpanes) that were loaded before
             continue;
         const bool visible = settings->value(QLatin1String(outputPaneVisibleKeyC)).toBool();
+        g_outputPanes[idx].buttonVisible = visible;
         g_outputPanes[idx].button->setVisible(visible);
     }
     settings->endArray();
@@ -602,20 +578,20 @@ void OutputPaneManager::readSettings()
 
 void OutputPaneManager::slotNext()
 {
-    int idx = currentIndex();
-    ensurePageVisible(idx);
-    IOutputPane *out = g_outputPanes.at(idx).pane;
-    if (out->canNext())
-        out->goToNext();
+//    int idx = currentIndex();
+//    ensurePageVisible(idx);
+//    IOutputPane *out = g_outputPanes.at(idx).pane;
+//    if (out->canNext())
+//        out->goToNext();
 }
 
 void OutputPaneManager::slotPrev()
 {
-    int idx = currentIndex();
-    ensurePageVisible(idx);
-    IOutputPane *out = g_outputPanes.at(idx).pane;
-    if (out->canPrevious())
-        out->goToPrev();
+//    int idx = currentIndex();
+//    ensurePageVisible(idx);
+//    IOutputPane *out = g_outputPanes.at(idx).pane;
+//    if (out->canPrevious())
+//        out->goToPrev();
 }
 
 void OutputPaneManager::slotHide()
@@ -628,7 +604,7 @@ void OutputPaneManager::slotHide()
         QTC_ASSERT(idx >= 0, return);
         g_outputPanes.at(idx).button->setChecked(false);
         g_outputPanes.at(idx).pane->visibilityChanged(false);
-        if (IEditor *editor = EditorManager::currentEditor()) {
+        if (IEditor *editor = HomeManager::currentEditor()) {
             QWidget *w = editor->widget()->focusWidget();
             if (!w)
                 w = editor->widget();
@@ -653,7 +629,7 @@ void OutputPaneManager::showPage(int idx, int flags)
     if (!ph && flags & IOutputPane::ModeSwitch) {
         // In this mode we don't have a placeholder
         // switch to the output mode and switch the page
-        ModeManager::activateMode(Id(Constants::MODE_EDIT));
+        ModeManager::activateMode(Id(Constants::MODE_HOME));
         ph = OutputPanePlaceHolder::getCurrent();
     }
 
@@ -704,6 +680,7 @@ void OutputPaneManager::setCurrentIndex(int idx)
         OutputPaneData &data = g_outputPanes[idx];
         IOutputPane *pane = data.pane;
         data.button->show();
+        data.buttonVisible = true;
         pane->visibilityChanged(true);
 
         bool canNavigate = pane->canNavigate();
@@ -723,7 +700,7 @@ void OutputPaneManager::popupMenu()
     for (OutputPaneData &data : g_outputPanes) {
         QAction *act = menu.addAction(data.pane->displayName());
         act->setCheckable(true);
-        act->setChecked(data.button->isPaneVisible());
+        act->setChecked(data.buttonVisible);
         act->setData(idx);
         ++idx;
     }
@@ -733,10 +710,11 @@ void OutputPaneManager::popupMenu()
     idx = result->data().toInt();
     QTC_ASSERT(idx >= 0 && idx < g_outputPanes.size(), return);
     OutputPaneData &data = g_outputPanes[idx];
-    if (data.button->isPaneVisible()) {
+    if (data.buttonVisible) {
         data.pane->visibilityChanged(false);
         data.button->setChecked(false);
         data.button->hide();
+        data.buttonVisible = false;
     } else {
         showPage(idx, IOutputPane::ModeSwitch);
     }
@@ -751,7 +729,7 @@ void OutputPaneManager::saveSettings() const
         const OutputPaneData &data = g_outputPanes.at(i);
         settings->setArrayIndex(i);
         settings->setValue(QLatin1String(outputPaneIdKeyC), data.id.toSetting());
-        settings->setValue(QLatin1String(outputPaneVisibleKeyC), data.button->isPaneVisible());
+        settings->setValue(QLatin1String(outputPaneVisibleKeyC), data.buttonVisible);
     }
     settings->endArray();
     int heightSetting = m_outputPaneHeightSetting;
@@ -926,11 +904,6 @@ void OutputPaneToggleButton::setIconBadgeNumber(int number)
     QString text = (number ? QString::number(number) : QString());
     m_badgeNumberLabel.setText(text);
     updateGeometry();
-}
-
-bool OutputPaneToggleButton::isPaneVisible() const
-{
-    return isVisibleTo(parentWidget());
 }
 
 

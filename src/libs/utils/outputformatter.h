@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
@@ -65,13 +40,11 @@ public:
     using LinkSpecs = QList<LinkSpec>;
     class Result {
     public:
-        Result(Status s, const LinkSpecs &l = {}, const optional<QString> &c = {},
-               const optional<OutputFormat> &f = {})
-            : status(s), linkSpecs(l), newContent(c), formatOverride(f) {}
+        Result(Status s, const LinkSpecs &l = {}, const optional<QString> &c = {})
+            : status(s), linkSpecs(l), newContent(c) {}
         Status status;
         LinkSpecs linkSpecs;
         optional<QString> newContent; // Hard content override. Only to be used in extreme cases.
-        optional<OutputFormat> formatOverride;
     };
 
     static bool isLinkTarget(const QString &target);
@@ -93,7 +66,7 @@ public:
     virtual bool handleLink(const QString &href) { Q_UNUSED(href); return false; }
     virtual bool hasFatalErrors() const { return false; }
     virtual void flush() {}
-    virtual void runPostPrintActions(QPlainTextEdit *) {}
+    virtual void runPostPrintActions() {}
 
     void setRedirectionDetector(const OutputLineParser *detector);
     bool needsRedirection() const;
@@ -157,7 +130,6 @@ public:
     bool handleFileLink(const QString &href);
     void handleLink(const QString &href);
     void setBoldFontEnabled(bool enabled);
-    void setForwardStdOutToStdError(bool enabled);
 
     bool hasFatalErrors() const;
 

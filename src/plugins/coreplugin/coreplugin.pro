@@ -9,12 +9,23 @@ QT += \
 isEmpty(QTC_SHOW_BUILD_DATE): QTC_SHOW_BUILD_DATE = $$(QTC_SHOW_BUILD_DATE)
 !isEmpty(QTC_SHOW_BUILD_DATE): DEFINES += QTC_SHOW_BUILD_DATE
 
-include(../../qtcreatorplugin.pri)
+include(../../mfds_plugin.pri)
 msvc: QMAKE_CXXFLAGS += -wd4251 -wd4290 -wd4250
 SOURCES += corejsextensions.cpp \
+    homemanager/homearea.cpp \
+    homemanager/homemanager.cpp \
+    homemanager/homeview.cpp \
+    homemanager/homewindow.cpp \
+    homemanager/ieditor.cpp \
+    homemanager/ieditorfactory.cpp \
+    homemanager/iexternalhome.cpp \
+    homemanager/documentmodel.cpp \
+    homemanager/openeditorsview.cpp \
+    homemanager/openeditorswindow.cpp \
+    homemanager/systemeditor.cpp \
+    homemode.cpp \
     mainwindow.cpp \
     shellcommand.cpp \
-    editmode.cpp \
     iwizardfactory.cpp \
     fancyactionbar.cpp \
     fancytabwidget.cpp \
@@ -22,29 +33,16 @@ SOURCES += corejsextensions.cpp \
     themechooser.cpp \
     icontext.cpp \
     jsexpander.cpp \
-    messagemanager.cpp \
-    messageoutputwindow.cpp \
     outputpane.cpp \
     outputwindow.cpp \
-    vcsmanager.cpp \
     statusbarmanager.cpp \
     versiondialog.cpp \
-    editormanager/editorarea.cpp \
-    editormanager/editormanager.cpp \
-    editormanager/editorview.cpp \
-    editormanager/editorwindow.cpp \
-    editormanager/documentmodel.cpp \
-    editormanager/openeditorsview.cpp \
-    editormanager/openeditorswindow.cpp \
-    editormanager/ieditorfactory.cpp \
-    editormanager/iexternaleditor.cpp \
     actionmanager/actionmanager.cpp \
     actionmanager/command.cpp \
     actionmanager/commandbutton.cpp \
     actionmanager/actioncontainer.cpp \
     actionmanager/commandsfile.cpp \
     dialogs/saveitemsdialog.cpp \
-    dialogs/newdialogwidget.cpp \
     dialogs/newdialog.cpp \
     dialogs/settingsdialog.cpp \
     actionmanager/commandmappings.cpp \
@@ -55,6 +53,7 @@ SOURCES += corejsextensions.cpp \
     progressmanager/progressview.cpp \
     progressmanager/progressbar.cpp \
     progressmanager/futureprogress.cpp \
+    reaper.cpp \
     coreplugin.cpp \
     modemanager.cpp \
     basefilewizard.cpp \
@@ -66,16 +65,13 @@ SOURCES += corejsextensions.cpp \
     manhattanstyle.cpp \
     minisplitter.cpp \
     styleanimator.cpp \
-    findplaceholder.cpp \
     rightpane.cpp \
     sidebar.cpp \
     fileiconprovider.cpp \
     icore.cpp \
-    editormanager/ieditor.cpp \
     dialogs/ioptionspage.cpp \
     settingsdatabase.cpp \
     imode.cpp \
-    editormanager/systemeditor.cpp \
     designmode.cpp \
     editortoolbar.cpp \
     helpitem.cpp \
@@ -83,11 +79,7 @@ SOURCES += corejsextensions.cpp \
     outputpanemanager.cpp \
     navigationsubwidget.cpp \
     sidebarwidget.cpp \
-    externaltool.cpp \
-    dialogs/externaltoolconfig.cpp \
     dialogs/filepropertiesdialog.cpp \
-    mimetypemagicdialog.cpp \
-    mimetypesettings.cpp \
     dialogs/promptoverwritedialog.cpp \
     fileutils.cpp \
     featureprovider.cpp \
@@ -95,52 +87,46 @@ SOURCES += corejsextensions.cpp \
     idocumentfactory.cpp \
     textdocument.cpp \
     documentmanager.cpp \
-    iversioncontrol.cpp \
-    dialogs/addtovcsdialog.cpp \
     dialogs/restartdialog.cpp \
     ioutputpane.cpp \
-    patchtool.cpp \
     windowsupport.cpp \
     opendocumentstreeview.cpp \
     messagebox.cpp \
     iwelcomepage.cpp \
-    externaltoolmanager.cpp \
     systemsettings.cpp \
     coreicons.cpp \
     diffservice.cpp \
-    menubarfilter.cpp \
     welcomepagehelper.cpp \
     dialogs/codecselector.cpp \
-    plugininstallwizard.cpp \
-    foldernavigationwidget.cpp
+    plugininstallwizard.cpp
 
 HEADERS += corejsextensions.h \
+    homemanager/homearea.h \
+    homemanager/homemanager.h \
+    homemanager/homemanager_p.h \
+    homemanager/homeview.h \
+    homemanager/homewindow.h \
+    homemanager/ieditor.h \
+    homemanager/ieditorfactory.h \
+    homemanager/ieditorfactory_p.h \
+    homemanager/iexternalhome.h \
+    homemanager/documentmodel.h \
+    homemanager/openeditorsview.h \
+    homemanager/openeditorswindow.h \
+    homemanager/systemeditor.h \
+    homemanager/documentmodel_p.h \
+    homemode.h \
     mainwindow.h \
     shellcommand.h \
-    editmode.h \
     iwizardfactory.h \
     fancyactionbar.h \
     fancytabwidget.h \
     generalsettings.h \
     themechooser.h \
     jsexpander.h \
-    messagemanager.h \
-    messageoutputwindow.h \
     outputpane.h \
     outputwindow.h \
-    vcsmanager.h \
     statusbarmanager.h \
-    editormanager/editorarea.h \
-    editormanager/editormanager.h \
-    editormanager/editormanager_p.h \
-    editormanager/editorview.h \
-    editormanager/editorwindow.h \
-    editormanager/documentmodel.h \
-    editormanager/openeditorsview.h \
-    editormanager/openeditorswindow.h \
-    editormanager/ieditor.h \
-    editormanager/iexternaleditor.h \
-    editormanager/ieditorfactory.h \
     actionmanager/actioncontainer.h \
     actionmanager/actionmanager.h \
     actionmanager/command.h \
@@ -150,7 +136,6 @@ HEADERS += corejsextensions.h \
     actionmanager/actioncontainer_p.h \
     actionmanager/commandsfile.h \
     dialogs/saveitemsdialog.h \
-    dialogs/newdialogwidget.h \
     dialogs/newdialog.h \
     dialogs/settingsdialog.h \
     actionmanager/commandmappings.h \
@@ -163,12 +148,13 @@ HEADERS += corejsextensions.h \
     progressmanager/progressbar.h \
     progressmanager/futureprogress.h \
     progressmanager/progressmanager.h \
+    reaper.h \
+    reaper_p.h \
     icontext.h \
     icore.h \
     imode.h \
     ioutputpane.h \
     coreconstants.h \
-    iversioncontrol.h \
     ifilewizardextension.h \
     versiondialog.h \
     core_global.h \
@@ -183,12 +169,10 @@ HEADERS += corejsextensions.h \
     manhattanstyle.h \
     minisplitter.h \
     styleanimator.h \
-    findplaceholder.h \
     rightpane.h \
     sidebar.h \
     fileiconprovider.h \
     settingsdatabase.h \
-    editormanager/systemeditor.h \
     designmode.h \
     editortoolbar.h \
     helpitem.h \
@@ -197,55 +181,37 @@ HEADERS += corejsextensions.h \
     outputpanemanager.h \
     navigationsubwidget.h \
     sidebarwidget.h \
-    externaltool.h \
-    dialogs/externaltoolconfig.h \
     dialogs/filepropertiesdialog.h \
-    mimetypemagicdialog.h \
-    mimetypesettings.h \
     dialogs/promptoverwritedialog.h \
     fileutils.h \
-    externaltoolmanager.h \
     generatedfile.h \
     featureprovider.h \
     idocument.h \
     idocumentfactory.h \
     textdocument.h \
     documentmanager.h \
-    dialogs/addtovcsdialog.h \
     dialogs/restartdialog.h \
-    patchtool.h \
     windowsupport.h \
     opendocumentstreeview.h \
     messagebox.h \
     iwelcomepage.h \
     systemsettings.h \
     coreicons.h \
-    editormanager/documentmodel_p.h \
     diffservice.h \
-    menubarfilter.h \
-    editormanager/ieditorfactory_p.h \
     welcomepagehelper.h \
     dialogs/codecselector.h \
-    plugininstallwizard.h \
-    foldernavigationwidget.h
+    plugininstallwizard.h
 
 FORMS += dialogs/newdialog.ui \
     dialogs/saveitemsdialog.ui \
     dialogs/readonlyfilesdialog.ui \
     dialogs/openwithdialog.ui \
     generalsettings.ui \
-    dialogs/externaltoolconfig.ui \
     dialogs/filepropertiesdialog.ui \
-    mimetypesettingspage.ui \
-    mimetypemagicdialog.ui \
-    dialogs/addtovcsdialog.ui \
     systemsettings.ui
 
 RESOURCES += core.qrc \
     fancyactionbar.qrc
-
-include(find/find.pri)
-include(locator/locator.pri)
 
 win32 {
     SOURCES += progressmanager/progressmanager_win.cpp

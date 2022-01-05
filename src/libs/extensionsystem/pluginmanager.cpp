@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "pluginmanager.h"
 #include "pluginmanager_p.h"
 #include "pluginspec.h"
@@ -107,7 +82,7 @@ enum { debugLeaks = 0 };
 
     \section1 Plugins
     Plugins must derive from the IPlugin class and have the IID
-    \c "org.qt-project.Qt.QtCreatorPlugin".
+    \c "org.milab.Qt.MFDSPlugin".
 
     The plugin manager is used to set a list of file system directories to search for
     plugins, retrieve information about the state of these plugins, and to load them.
@@ -417,8 +392,8 @@ static QString filled(const QString &s, int min)
 QString PluginManager::systemInformation()
 {
     QString result;
-    CommandLine qtDiag(FilePath::fromString(QLibraryInfo::location(QLibraryInfo::BinariesPath))
-                        .pathAppended("qtdiag").withExecutableSuffix());
+    CommandLine qtDiag(HostOsInfo::withExecutableSuffix(
+                QLibraryInfo::location(QLibraryInfo::BinariesPath) + "/qtdiag"));
     QtcProcess qtDiagProc;
     qtDiagProc.setCommand(qtDiag);
     qtDiagProc.runBlocking();
@@ -434,10 +409,6 @@ QString PluginManager::systemInformation()
         result += QLatin1String(spec->isEffectivelyEnabled() ? "+ " : "  ") + filled(spec->name(), size) +
                   " " + spec->version() + "\n";
     }
-    QString settingspath = QFileInfo(settings()->fileName()).path();
-    if (settingspath.startsWith(QDir::homePath()))
-        settingspath.replace(QDir::homePath(), "~");
-    result += "\nUsed settingspath: " + settingspath + "\n";
     return result;
 }
 

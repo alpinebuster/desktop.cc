@@ -1,35 +1,8 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "helpitem.h"
 #include "helpmanager.h"
 
 #include <utils/algorithm.h>
 #include <utils/htmldocextractor.h>
-
-#include <QVersionNumber>
 
 using namespace Core;
 
@@ -167,66 +140,31 @@ QString HelpItem::extractContent(bool extended) const
     return contents;
 }
 
-// The following is only correct under the specific current conditions, and it will
-// always be quite some guessing as long as the version information does not
-// include separators for major vs minor vs patch version.
-static QVersionNumber qtVersionHeuristic(const QString &digits)
-{
-    if (digits.count() > 6 || digits.count() < 3)
-        return {}; // suspicious version number
-
-    for (const QChar &digit : digits)
-        if (!digit.isDigit())
-            return {}; // we should have only digits
-
-    // When we have 3 digits, we split it like: ABC -> A.B.C
-    // When we have 4 digits, we split it like: ABCD -> A.BC.D
-    // When we have 5 digits, we split it like: ABCDE -> A.BC.DE
-    // When we have 6 digits, we split it like: ABCDEF -> AB.CD.EF
-    switch (digits.count()) {
-    case 3:
-        return QVersionNumber(digits.mid(0, 1).toInt(),
-                              digits.mid(1, 1).toInt(),
-                              digits.mid(2, 1).toInt());
-    case 4:
-        return QVersionNumber(digits.mid(0, 1).toInt(),
-                              digits.mid(1, 2).toInt(),
-                              digits.mid(3, 1).toInt());
-    case 5:
-        return QVersionNumber(digits.mid(0, 1).toInt(),
-                              digits.mid(1, 2).toInt(),
-                              digits.mid(3, 2).toInt());
-    case 6:
-        return QVersionNumber(digits.mid(0, 2).toInt(),
-                              digits.mid(2, 2).toInt(),
-                              digits.mid(4, 2).toInt());
-    default:
-        break;
-    }
-    return {};
-}
-
-static std::pair<QUrl, QVersionNumber> extractVersion(const QUrl &url)
+static std::pair<QUrl, int> extractVersion(const QUrl &url)
 {
     const QString host = url.host();
     const QStringList hostParts = host.split('.');
     if (hostParts.size() == 4 && (host.startsWith("com.trolltech.")
-            || host.startsWith("org.qt-project."))) {
-        const QVersionNumber version = qtVersionHeuristic(hostParts.at(3));
-        if (!version.isNull()) {
+            || host.startsWith("org.milab."))) {
+        bool ok = false;
+        // the following is only correct under the specific current conditions, and it will
+        // always be quite some guessing as long as the version information does not
+        // include separators for major vs minor vs patch version
+        const int version = hostParts.at(3).toInt(&ok);
+        if (ok) {
             QUrl urlWithoutVersion(url);
             urlWithoutVersion.setHost(hostParts.mid(0, 3).join('.'));
             return {urlWithoutVersion, version};
         }
     }
-    return {url, {}};
+    return {url, 0};
 }
 
 // sort primary by "url without version" and seconday by "version"
 static bool helpUrlLessThan(const QUrl &a, const QUrl &b)
 {
-    const std::pair<QUrl, QVersionNumber> va = extractVersion(a);
-    const std::pair<QUrl, QVersionNumber> vb = extractVersion(b);
+    const std::pair<QUrl, int> va = extractVersion(a);
+    const std::pair<QUrl, int> vb = extractVersion(b);
     const QString sa = va.first.toString();
     const QString sb = vb.first.toString();
     if (sa == sb)
@@ -297,11 +235,10 @@ static const HelpItem::Links getBestLink(const HelpItem::Links &links)
     // This is to ensure that if we succeeded with an ID lookup, and we have e.g. Qt5 and Qt4
     // documentation, that we only return the Qt5 link even though the Qt5 and Qt4 URLs look
     // different.
-    QVersionNumber highestVersion;
-    // Default to first link if version extraction failed, possibly because it is not a Qt doc link
-    HelpItem::Link bestLink = links.front();
+    int highestVersion = -1;
+    HelpItem::Link bestLink;
     for (const HelpItem::Link &link : links) {
-        const QVersionNumber version = extractVersion(link.second).second;
+        const int version = extractVersion(link.second).second;
         if (version > highestVersion) {
             highestVersion = version;
             bestLink = link;

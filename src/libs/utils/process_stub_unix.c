@@ -66,8 +66,7 @@ static void __attribute__((noreturn)) doExit(int code)
 {
     tcsetpgrp(0, getpid());
     puts(sleepMsg);
-    const char *rv = fgets(sleepMsg, 2, stdin); /* Minimal size to make it wait */
-    (void)rv; // Q_UNUSED
+    fgets(sleepMsg, 2, stdin); /* Minimal size to make it wait */
     exit(code);
 }
 

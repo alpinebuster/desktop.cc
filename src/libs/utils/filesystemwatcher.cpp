@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "filesystemwatcher.h"
 #include "globalfilechangeblocker.h"
 
@@ -249,7 +224,10 @@ void FileSystemWatcher::init()
 
 FileSystemWatcher::~FileSystemWatcher()
 {
-    clear();
+    if (!d->m_files.isEmpty())
+        removeFiles(files());
+    if (!d->m_directories.isEmpty())
+        removeDirectories(directories());
 
     if (!fileSystemWatcherStaticDataMap.isDestroyed() && --(d->m_staticData->m_objectCount) == 0) {
         delete d->m_staticData->m_watcher;
@@ -345,14 +323,6 @@ void FileSystemWatcher::removeFiles(const QStringList &files)
 
     if (!toRemove.isEmpty())
         d->m_staticData->m_watcher->removePaths(toRemove);
-}
-
-void FileSystemWatcher::clear()
-{
-    if (!d->m_files.isEmpty())
-        removeFiles(files());
-    if (!d->m_directories.isEmpty())
-        removeDirectories(directories());
 }
 
 QStringList FileSystemWatcher::files() const

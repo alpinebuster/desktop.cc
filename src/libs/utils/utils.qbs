@@ -7,7 +7,9 @@ Project {
     QtcLibrary {
 
         cpp.defines: base.concat([
-            "UTILS_LIBRARY"
+            "UTILS_LIBRARY",
+            "QTC_REL_TOOLS_PATH=\"" + FileInfo.relativePath('/' + qtc.ide_bin_path,
+                                                            '/' + qtc.ide_libexec_path) + "\""
         ])
         cpp.dynamicLibraries: {
             var libs = [];
@@ -113,8 +115,6 @@ Project {
             "fileinprojectfinder.h",
             "filenamevalidatinglineedit.cpp",
             "filenamevalidatinglineedit.h",
-            "filepath.cpp",
-            "filepath.h",
             "filesearch.cpp",
             "filesearch.h",
             "filesystemwatcher.cpp",
@@ -177,8 +177,6 @@ Project {
             "macroexpander.cpp",
             "macroexpander.h",
             "mapreduce.h",
-            "multitextcursor.cpp",
-            "multitextcursor.h",
             "namevaluedictionary.cpp",
             "namevaluedictionary.h",
             "namevalueitem.cpp",
@@ -220,10 +218,6 @@ Project {
             "portlist.h",
             "processhandle.cpp",
             "processhandle.h",
-            "processreaper.cpp",
-            "processreaper.h",
-            "processutils.cpp",
-            "processutils.h",
             "progressindicator.cpp",
             "progressindicator.h",
             "projectintropage.cpp",
@@ -264,8 +258,6 @@ Project {
             "shellcommand.h",
             "shellcommandpage.cpp",
             "shellcommandpage.h",
-            "singleton.cpp",
-            "singleton.h",
             "sizedarray.h",
             "smallstring.h",
             "smallstringiterator.h",
@@ -298,8 +290,6 @@ Project {
             "textfileformat.h",
             "textutils.cpp",
             "textutils.h",
-            "threadutils.cpp",
-            "threadutils.h",
             "treemodel.cpp",
             "treemodel.h",
             "treeviewcombobox.cpp",

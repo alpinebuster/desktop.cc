@@ -1,43 +1,13 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "systemsettings.h"
 #include "coreconstants.h"
 #include "coreplugin.h"
-#include "editormanager/editormanager_p.h"
+#include "homemanager/homemanager_p.h"
 #include "dialogs/restartdialog.h"
 #include "fileutils.h"
 #include "icore.h"
-#include "iversioncontrol.h"
 #include "mainwindow.h"
-#include "patchtool.h"
-#include "vcsmanager.h"
 
 #include <app/app_version.h>
-
-#include <utils/algorithm.h>
 #include <utils/checkablemessagebox.h>
 #include <utils/consoleprocess.h>
 #include <utils/environment.h>
@@ -85,62 +55,22 @@ public:
     SystemSettingsWidget()
     {
         m_ui.setupUi(this);
-        m_ui.terminalOpenArgs->setToolTip(
-            tr("Command line arguments used for \"%1\".").arg(FileUtils::msgTerminalHereAction()));
-
-        m_ui.reloadBehavior->setCurrentIndex(EditorManager::reloadSetting());
-        if (HostOsInfo::isAnyUnixHost()) {
-            const QVector<TerminalCommand> availableTerminals = ConsoleProcess::availableTerminalEmulators();
-            for (const TerminalCommand &term : availableTerminals)
-                m_ui.terminalComboBox->addItem(term.command, QVariant::fromValue(term));
-            updateTerminalUi(ConsoleProcess::terminalEmulator(ICore::settings()));
-            connect(m_ui.terminalComboBox,
-                    QOverload<int>::of(&QComboBox::currentIndexChanged),
-                    this,
-                    [this](int index) {
-                        updateTerminalUi(
-                            m_ui.terminalComboBox->itemData(index).value<TerminalCommand>());
-                    });
-        } else {
-            m_ui.terminalLabel->hide();
-            m_ui.terminalComboBox->hide();
-            m_ui.terminalOpenArgs->hide();
-            m_ui.terminalExecuteArgs->hide();
-            m_ui.resetTerminalButton->hide();
-        }
-
-        if (HostOsInfo::isAnyUnixHost() && !HostOsInfo::isMacHost()) {
-            m_ui.externalFileBrowserEdit->setText(UnixUtils::fileBrowser(ICore::settings()));
-        } else {
-            m_ui.externalFileBrowserLabel->hide();
-            m_ui.externalFileBrowserWidget->hide();
-        }
-
-        const QString patchToolTip = tr("Command used for reverting diff chunks.");
-        m_ui.patchCommandLabel->setToolTip(patchToolTip);
-        m_ui.patchChooser->setToolTip(patchToolTip);
-        m_ui.patchChooser->setExpectedKind(PathChooser::ExistingCommand);
-        m_ui.patchChooser->setHistoryCompleter(QLatin1String("General.PatchCommand.History"));
-        m_ui.patchChooser->setFilePath(PatchTool::patchCommand());
-        m_ui.autoSaveCheckBox->setChecked(EditorManagerPrivate::autoSaveEnabled());
+        m_ui.reloadBehavior->setCurrentIndex(HomeManager::reloadSetting());
+        m_ui.autoSaveCheckBox->setChecked(HomeManagerPrivate::autoSaveEnabled());
         m_ui.autoSaveCheckBox->setToolTip(tr("Automatically creates temporary copies of "
                                                 "modified files. If %1 is restarted after "
                                                 "a crash or power failure, it asks whether to "
                                                 "recover the auto-saved content.")
                                              .arg(Constants::IDE_DISPLAY_NAME));
-        m_ui.autoSaveRefactoringCheckBox->setChecked(EditorManager::autoSaveAfterRefactoring());
-        m_ui.autoSaveRefactoringCheckBox->setToolTip(tr("Automatically saves all open files "
-            "affected by a refactoring operation,\n provided they were unmodified before the "
-            "refactoring."));
-        m_ui.autoSaveInterval->setValue(EditorManagerPrivate::autoSaveInterval());
-        m_ui.autoSuspendCheckBox->setChecked(EditorManagerPrivate::autoSuspendEnabled());
-        m_ui.autoSuspendMinDocumentCount->setValue(EditorManagerPrivate::autoSuspendMinDocumentCount());
+        m_ui.autoSaveInterval->setValue(HomeManagerPrivate::autoSaveInterval());
+        m_ui.autoSuspendCheckBox->setChecked(HomeManagerPrivate::autoSuspendEnabled());
+        m_ui.autoSuspendMinDocumentCount->setValue(HomeManagerPrivate::autoSuspendMinDocumentCount());
         m_ui.warnBeforeOpeningBigFiles->setChecked(
-                    EditorManagerPrivate::warnBeforeOpeningBigFilesEnabled());
-        m_ui.bigFilesLimitSpinBox->setValue(EditorManagerPrivate::bigFileSizeLimit());
+                    HomeManagerPrivate::warnBeforeOpeningBigFilesEnabled());
+        m_ui.bigFilesLimitSpinBox->setValue(HomeManagerPrivate::bigFileSizeLimit());
         m_ui.maxRecentFilesSpinBox->setMinimum(1);
         m_ui.maxRecentFilesSpinBox->setMaximum(99);
-        m_ui.maxRecentFilesSpinBox->setValue(EditorManagerPrivate::maxRecentFiles());
+        m_ui.maxRecentFilesSpinBox->setValue(HomeManagerPrivate::maxRecentFiles());
 #ifdef ENABLE_CRASHPAD
         if (ICore::settings()->value(showCrashButtonKey).toBool()) {
             auto crashButton = new QPushButton("CRASH!!!");
@@ -184,17 +114,6 @@ public:
         m_ui.askBeforeExitCheckBox->setChecked(
                     static_cast<Core::Internal::MainWindow *>(ICore::mainWindow())->askConfirmationBeforeExit());
 
-        if (HostOsInfo::isAnyUnixHost()) {
-            connect(m_ui.resetTerminalButton, &QAbstractButton::clicked,
-                    this, &SystemSettingsWidget::resetTerminal);
-            if (!HostOsInfo::isMacHost()) {
-                connect(m_ui.resetFileBrowserButton, &QAbstractButton::clicked,
-                        this, &SystemSettingsWidget::resetFileBrowser);
-                connect(m_ui.helpExternalFileBrowserButton, &QAbstractButton::clicked,
-                        this, &SystemSettingsWidget::showHelpForFileBrowser);
-            }
-        }
-
         if (HostOsInfo::isMacHost()) {
             Qt::CaseSensitivity defaultSensitivity
                     = OsSpecificAspects::fileNameCaseSensitivity(HostOsInfo::hostOs());
@@ -221,37 +140,13 @@ public:
             m_ui.fileSystemCaseSensitivityWidget->hide();
         }
 
-        updatePath();
-
-        m_ui.environmentChangesLabel->setElideMode(Qt::ElideRight);
         m_environmentChanges = CorePlugin::environmentChanges();
-        updateEnvironmentChangesLabel();
-        connect(m_ui.environmentButton, &QPushButton::clicked, [this] {
-            Utils::optional<EnvironmentItems> changes
-                = Utils::EnvironmentDialog::getEnvironmentItems(m_ui.environmentButton,
-                                                                m_environmentChanges);
-            if (!changes)
-                return;
-            m_environmentChanges = *changes;
-            updateEnvironmentChangesLabel();
-            updatePath();
-        });
-
-        connect(VcsManager::instance(), &VcsManager::configurationChanged,
-                this, &SystemSettingsWidget::updatePath);
     }
 
 private:
     void apply() final;
-
     void showHelpForFileBrowser();
-    void resetFileBrowser();
-    void resetTerminal();
-    void updateTerminalUi(const Utils::TerminalCommand &term);
-    void updatePath();
-    void updateEnvironmentChangesLabel();
     void updateClearCrashWidgets();
-
     void showHelpDialog(const QString &title, const QString &helpText);
     Ui::SystemSettings m_ui;
     QPointer<QMessageBox> m_dialog;
@@ -260,28 +155,15 @@ private:
 
 void SystemSettingsWidget::apply()
 {
-    EditorManager::setReloadSetting(IDocument::ReloadSetting(m_ui.reloadBehavior->currentIndex()));
-    if (HostOsInfo::isAnyUnixHost()) {
-        ConsoleProcess::setTerminalEmulator(ICore::settings(),
-                                            {m_ui.terminalComboBox->lineEdit()->text(),
-                                             m_ui.terminalOpenArgs->text(),
-                                             m_ui.terminalExecuteArgs->text()});
-        if (!HostOsInfo::isMacHost()) {
-            UnixUtils::setFileBrowser(ICore::settings(),
-                                      m_ui.externalFileBrowserEdit->text());
-        }
-    }
-    PatchTool::setPatchCommand(m_ui.patchChooser->filePath());
-    EditorManagerPrivate::setAutoSaveEnabled(m_ui.autoSaveCheckBox->isChecked());
-    EditorManagerPrivate::setAutoSaveInterval(m_ui.autoSaveInterval->value());
-    EditorManagerPrivate::setAutoSaveAfterRefactoring(
-                m_ui.autoSaveRefactoringCheckBox->isChecked());
-    EditorManagerPrivate::setAutoSuspendEnabled(m_ui.autoSuspendCheckBox->isChecked());
-    EditorManagerPrivate::setAutoSuspendMinDocumentCount(m_ui.autoSuspendMinDocumentCount->value());
-    EditorManagerPrivate::setWarnBeforeOpeningBigFilesEnabled(
+    HomeManager::setReloadSetting(IDocument::ReloadSetting(m_ui.reloadBehavior->currentIndex()));
+    HomeManagerPrivate::setAutoSaveEnabled(m_ui.autoSaveCheckBox->isChecked());
+    HomeManagerPrivate::setAutoSaveInterval(m_ui.autoSaveInterval->value());
+    HomeManagerPrivate::setAutoSuspendEnabled(m_ui.autoSuspendCheckBox->isChecked());
+    HomeManagerPrivate::setAutoSuspendMinDocumentCount(m_ui.autoSuspendMinDocumentCount->value());
+    HomeManagerPrivate::setWarnBeforeOpeningBigFilesEnabled(
                 m_ui.warnBeforeOpeningBigFiles->isChecked());
-    EditorManagerPrivate::setBigFileSizeLimit(m_ui.bigFilesLimitSpinBox->value());
-    EditorManagerPrivate::setMaxRecentFiles(m_ui.maxRecentFilesSpinBox->value());
+    HomeManagerPrivate::setBigFileSizeLimit(m_ui.bigFilesLimitSpinBox->value());
+    HomeManagerPrivate::setMaxRecentFiles(m_ui.maxRecentFilesSpinBox->value());
 #ifdef ENABLE_CRASHPAD
     ICore::settings()->setValue(crashReportingEnabledKey,
                                 m_ui.enableCrashReportingCheckBox->isChecked());
@@ -302,40 +184,6 @@ void SystemSettingsWidget::apply()
     }
 
     CorePlugin::setEnvironmentChanges(m_environmentChanges);
-}
-
-void SystemSettingsWidget::resetTerminal()
-{
-    if (HostOsInfo::isAnyUnixHost())
-        m_ui.terminalComboBox->setCurrentIndex(0);
-}
-
-void SystemSettingsWidget::updateTerminalUi(const TerminalCommand &term)
-{
-    m_ui.terminalComboBox->lineEdit()->setText(term.command);
-    m_ui.terminalOpenArgs->setText(term.openArgs);
-    m_ui.terminalExecuteArgs->setText(term.executeArgs);
-}
-
-void SystemSettingsWidget::resetFileBrowser()
-{
-    if (HostOsInfo::isAnyUnixHost() && !HostOsInfo::isMacHost())
-        m_ui.externalFileBrowserEdit->setText(UnixUtils::defaultFileBrowser());
-}
-
-void SystemSettingsWidget::updatePath()
-{
-    EnvironmentChange change;
-    change.addAppendToPath(VcsManager::additionalToolsPath());
-    m_ui.patchChooser->setEnvironmentChange(change);
-}
-
-void SystemSettingsWidget::updateEnvironmentChangesLabel()
-{
-    const QString shortSummary = Utils::EnvironmentItem::toStringList(m_environmentChanges)
-                                     .join("; ");
-    m_ui.environmentChangesLabel->setText(shortSummary.isEmpty() ? tr("No changes to apply.")
-                                                                 : shortSummary);
 }
 
 void SystemSettingsWidget::showHelpDialog(const QString &title, const QString &helpText)

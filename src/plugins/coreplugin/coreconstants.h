@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include <QtGlobal>
@@ -32,10 +7,10 @@ namespace Constants {
 
 // Modes
 const char MODE_WELCOME[]          = "Welcome";
-const char MODE_EDIT[]             = "Edit";
+const char MODE_HOME[]             = "Home";
 const char MODE_DESIGN[]           = "Design";
 const int  P_MODE_WELCOME          = 100;
-const int  P_MODE_EDIT             = 90;
+const int  P_MODE_HOME             = 90;
 const int  P_MODE_DESIGN           = 89;
 
 // TouchBar
@@ -61,17 +36,17 @@ const char M_HELP[]                = "QtCreator.Menu.Help";
 // Contexts
 const char C_GLOBAL[]              = "Global Context";
 const char C_WELCOME_MODE[]        = "Core.WelcomeMode";
-const char C_EDIT_MODE[]           = "Core.EditMode";
+const char C_HOME_MODE[]           = "Core.HomeMode";
 const char C_DESIGN_MODE[]         = "Core.DesignMode";
-const char C_EDITORMANAGER[]       = "Core.EditorManager";
+const char C_HOME_MANAGER[]        = "Core.HomeManager";
 const char C_NAVIGATION_PANE[]     = "Core.NavigationPane";
 const char C_PROBLEM_PANE[]        = "Core.ProblemPane";
 const char C_GENERAL_OUTPUT_PANE[] = "Core.GeneralOutputPane";
 
 // Default editor kind
 const char K_DEFAULT_TEXT_EDITOR_DISPLAY_NAME[] = QT_TRANSLATE_NOOP("OpenWith::Editors", "Plain Text Editor");
-const char K_DEFAULT_TEXT_EDITOR_ID[] = "Core.PlainTextEditor";
-const char K_DEFAULT_BINARY_EDITOR_ID[] = "Core.BinaryEditor";
+const char K_DEFAULT_TEXT_EDITOR_ID[]           = "Core.PlainTextEditor";
+const char K_DEFAULT_BINARY_EDITOR_ID[]         = "Core.BinaryEditor";
 
 //actions
 const char UNDO[]                  = "QtCreator.Undo";
@@ -87,8 +62,8 @@ const char ZOOM_OUT[]              = "QtCreator.ZoomOut";
 const char ZOOM_RESET[]            = "QtCreator.ZoomReset";
 
 const char NEW[]                   = "QtCreator.New";
-const char NEW_FILE[]              = "QtCreator.NewFile";
 const char OPEN[]                  = "QtCreator.Open";
+const char OPEN_PROJECT[]          = "QtCreator.OpenProject";
 const char OPEN_WITH[]             = "QtCreator.OpenWith";
 const char REVERTTOSAVED[]         = "QtCreator.RevertToSaved";
 const char SAVE[]                  = "QtCreator.Save";
@@ -113,7 +88,7 @@ const char TR_HIDE_RIGHT_SIDEBAR[] = QT_TRANSLATE_NOOP("Core", "Hide Right Sideb
 
 const char MINIMIZE_WINDOW[]       = "QtCreator.MinimizeWindow";
 const char ZOOM_WINDOW[]           = "QtCreator.ZoomWindow";
-const char CLOSE_WINDOW[]           = "QtCreator.CloseWindow";
+const char CLOSE_WINDOW[]          = "QtCreator.CloseWindow";
 
 const char SPLIT[]                 = "QtCreator.Split";
 const char SPLIT_SIDE_BY_SIDE[]    = "QtCreator.SplitSideBySide";
@@ -136,9 +111,8 @@ const char ABOUT_QTCREATOR[]       = "QtCreator.AboutQtCreator";
 const char ABOUT_PLUGINS[]         = "QtCreator.AboutPlugins";
 const char S_RETURNTOEDITOR[]      = "QtCreator.ReturnToEditor";
 const char SHOWINGRAPHICALSHELL[]  = "QtCreator.ShowInGraphicalShell";
-const char SHOWINFILESYSTEMVIEW[]  = "QtCreator.ShowInFileSystemView";
 
-const char OUTPUTPANE_CLEAR[] = "Coreplugin.OutputPane.clear";
+const char OUTPUTPANE_CLEAR[]      = "Coreplugin.OutputPane.clear";
 
 // Default groups
 const char G_DEFAULT_ONE[]         = "QtCreator.Group.Default.One";
@@ -206,31 +180,31 @@ const char G_TOUCHBAR_EDITOR[]     = "QtCreator.Group.TouchBar.Editor";
 const char G_TOUCHBAR_NAVIGATION[] = "QtCreator.Group.TouchBar.Navigation";
 const char G_TOUCHBAR_OTHER[]      = "QtCreator.Group.TouchBar.Other";
 
-const char WIZARD_CATEGORY_QT[] = "R.Qt";
+const char WIZARD_CATEGORY_QT[]    = "R.Qt";
 const char WIZARD_TR_CATEGORY_QT[] = QT_TRANSLATE_NOOP("Core", "Qt");
-const char WIZARD_KIND_UNKNOWN[] = "unknown";
-const char WIZARD_KIND_PROJECT[] = "project";
-const char WIZARD_KIND_FILE[] = "file";
+const char WIZARD_KIND_UNKNOWN[]   = "unknown";
+const char WIZARD_KIND_PROJECT[]   = "project";
+const char WIZARD_KIND_FILE[]      = "file";
 
 const char SETTINGS_CATEGORY_CORE[] = "B.Core";
-const char SETTINGS_ID_INTERFACE[] = "A.Interface";
-const char SETTINGS_ID_SYSTEM[] = "B.Core.System";
-const char SETTINGS_ID_SHORTCUTS[] = "C.Keyboard";
-const char SETTINGS_ID_TOOLS[] = "D.ExternalTools";
-const char SETTINGS_ID_MIMETYPES[] = "E.MimeTypes";
+const char SETTINGS_ID_INTERFACE[]  = "A.Interface";
+const char SETTINGS_ID_SYSTEM[]     = "B.Core.System";
+const char SETTINGS_ID_SHORTCUTS[]  = "C.Keyboard";
+const char SETTINGS_ID_TOOLS[]      = "D.ExternalTools";
+const char SETTINGS_ID_MIMETYPES[]  = "E.MimeTypes";
 
-const char SETTINGS_DEFAULTTEXTENCODING[] = "General/DefaultFileEncoding";
+const char SETTINGS_DEFAULTTEXTENCODING[]     = "General/DefaultFileEncoding";
 const char SETTINGS_DEFAULT_LINE_TERMINATOR[] = "General/DefaultLineTerminator";
 
-const char SETTINGS_THEME[] = "Core/CreatorTheme";
-const char DEFAULT_THEME[] = "flat";
+const char SETTINGS_THEME[]     = "Core/CreatorTheme";
+const char DEFAULT_THEME[]      = "flat";
 const char DEFAULT_DARK_THEME[] = "flat-dark";
 
-const char TR_CLEAR_MENU[]         = QT_TRANSLATE_NOOP("Core", "Clear Menu");
+const char TR_CLEAR_MENU[]      = QT_TRANSLATE_NOOP("Core", "Clear Menu");
 
-const int MODEBAR_ICON_SIZE = 34;
+const int MODEBAR_ICON_SIZE             = 34;
 const int MODEBAR_ICONSONLY_BUTTON_SIZE = MODEBAR_ICON_SIZE + 4;
-const int DEFAULT_MAX_CHAR_COUNT = 10000000;
+const int DEFAULT_MAX_CHAR_COUNT        = 10000000;
 
 } // namespace Constants
 } // namespace Core

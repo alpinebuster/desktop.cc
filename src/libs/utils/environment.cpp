@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "environment.h"
 
 #include "algorithm.h"
@@ -52,22 +27,16 @@ QProcessEnvironment Environment::toProcessEnvironment() const
     return result;
 }
 
-void Environment::appendOrSetPath(const FilePath &value)
+void Environment::appendOrSetPath(const QString &value)
 {
-    QTC_CHECK(value.osType() == m_osType);
-    if (value.isEmpty())
-        return;
-    appendOrSet("PATH", value.nativePath(),
+    appendOrSet("PATH", QDir::toNativeSeparators(value),
                 QString(OsSpecificAspects::pathListSeparator(m_osType)));
 }
 
-void Environment::prependOrSetPath(const FilePath &value)
+void Environment::prependOrSetPath(const QString &value)
 {
-    QTC_CHECK(value.osType() == m_osType);
-    if (value.isEmpty())
-        return;
-    prependOrSet("PATH", value.nativePath(),
-                 QString(OsSpecificAspects::pathListSeparator(m_osType)));
+    prependOrSet("PATH", QDir::toNativeSeparators(value),
+            QString(OsSpecificAspects::pathListSeparator(m_osType)));
 }
 
 void Environment::appendOrSet(const QString &key, const QString &value, const QString &sep)
@@ -98,18 +67,17 @@ void Environment::prependOrSet(const QString &key, const QString &value, const Q
     }
 }
 
-void Environment::prependOrSetLibrarySearchPath(const FilePath &value)
+void Environment::prependOrSetLibrarySearchPath(const QString &value)
 {
-    QTC_CHECK(value.osType() == m_osType);
     switch (m_osType) {
     case OsTypeWindows: {
         const QChar sep = ';';
-        prependOrSet("PATH", value.nativePath(), QString(sep));
+        prependOrSet("PATH", QDir::toNativeSeparators(value), QString(sep));
         break;
     }
     case OsTypeMac: {
         const QString sep =  ":";
-        const QString nativeValue = value.nativePath();
+        const QString nativeValue = QDir::toNativeSeparators(value);
         prependOrSet("DYLD_LIBRARY_PATH", nativeValue, sep);
         prependOrSet("DYLD_FRAMEWORK_PATH", nativeValue, sep);
         break;
@@ -117,7 +85,7 @@ void Environment::prependOrSetLibrarySearchPath(const FilePath &value)
     case OsTypeLinux:
     case OsTypeOtherUnix: {
         const QChar sep = ':';
-        prependOrSet("LD_LIBRARY_PATH", value.nativePath(), QString(sep));
+        prependOrSet("LD_LIBRARY_PATH", QDir::toNativeSeparators(value), QString(sep));
         break;
     }
     default:
@@ -125,9 +93,9 @@ void Environment::prependOrSetLibrarySearchPath(const FilePath &value)
     }
 }
 
-void Environment::prependOrSetLibrarySearchPaths(const FilePaths &values)
+void Environment::prependOrSetLibrarySearchPaths(const QStringList &values)
 {
-    Utils::reverseForeach(values, [this](const FilePath &value) {
+    Utils::reverseForeach(values, [this](const QString &value) {
         prependOrSetLibrarySearchPath(value);
     });
 }
@@ -143,9 +111,8 @@ void Environment::setupEnglishOutput()
     set("LANGUAGE", "en_US:en");
 }
 
-static FilePath searchInDirectory(const QStringList &execs,
-                                  const FilePath &directory,
-                                  QSet<FilePath> &alreadyChecked)
+FilePath Environment::searchInDirectory(const QStringList &execs, const FilePath &directory,
+                                        QSet<FilePath> &alreadyChecked)
 {
     const int checkedCount = alreadyChecked.count();
     alreadyChecked.insert(directory);
@@ -191,8 +158,6 @@ bool Environment::isSameExecutable(const QString &exe1, const QString &exe2) con
             const FilePath f2 = FilePath::fromString(i2);
             if (f1 == f2)
                 return true;
-            if (f1.needsDevice() != f2.needsDevice() || f1.scheme() != f2.scheme())
-                return false;
             if (f1.resolveSymlinks() == f2.resolveSymlinks())
                 return true;
             if (FileUtils::fileId(f1) == FileUtils::fileId(f2))
@@ -207,19 +172,17 @@ QString Environment::expandedValueForKey(const QString &key) const
     return expandVariables(value(key));
 }
 
-static FilePath searchInDirectoriesHelper(const Environment &env,
-                                          const QString &executable,
-                                          const FilePaths &dirs,
-                                          const Environment::PathFilter &func,
-                                          bool usePath)
+FilePath Environment::searchInPath(const QString &executable,
+                                   const FilePaths &additionalDirs,
+                                   const PathFilter &func) const
 {
     if (executable.isEmpty())
         return FilePath();
 
-    const QString exec = QDir::cleanPath(env.expandVariables(executable));
+    const QString exec = QDir::cleanPath(expandVariables(executable));
     const QFileInfo fi(exec);
 
-    const QStringList execs = env.appendExeExtensions(exec);
+    const QStringList execs = appendExeExtensions(exec);
 
     if (fi.isAbsolute()) {
         for (const QString &path : execs) {
@@ -231,36 +194,21 @@ static FilePath searchInDirectoriesHelper(const Environment &env,
     }
 
     QSet<FilePath> alreadyChecked;
-    for (const FilePath &dir : dirs) {
+    for (const FilePath &dir : additionalDirs) {
         FilePath tmp = searchInDirectory(execs, dir, alreadyChecked);
         if (!tmp.isEmpty() && (!func || func(tmp)))
             return tmp;
     }
 
-    if (usePath) {
-        if (executable.contains('/'))
-            return FilePath();
+    if (executable.contains('/'))
+        return FilePath();
 
-        for (const FilePath &p : env.path()) {
-            FilePath tmp = searchInDirectory(execs, p, alreadyChecked);
-            if (!tmp.isEmpty() && (!func || func(tmp)))
-                return tmp;
-        }
+    for (const FilePath &p : path()) {
+        FilePath tmp = searchInDirectory(execs, p, alreadyChecked);
+        if (!tmp.isEmpty() && (!func || func(tmp)))
+            return tmp;
     }
     return FilePath();
-}
-
-FilePath Environment::searchInDirectories(const QString &executable,
-                                          const FilePaths &dirs) const
-{
-    return searchInDirectoriesHelper(*this, executable, dirs, {}, false);
-}
-
-FilePath Environment::searchInPath(const QString &executable,
-                                   const FilePaths &additionalDirs,
-                                   const PathFilter &func) const
-{
-    return searchInDirectoriesHelper(*this, executable, additionalDirs, func, true);
 }
 
 FilePaths Environment::findAllInPath(const QString &executable,
@@ -438,30 +386,19 @@ void EnvironmentChange::addUnsetValue(const QString &key)
     m_changeItems.append([key](Environment &env) { env.unset(key); });
 }
 
-void EnvironmentChange::addPrependToPath(const FilePaths &values)
+void EnvironmentChange::addPrependToPath(const QString &value)
 {
-    for (int i = values.size(); --i >= 0; ) {
-        const FilePath value = values.at(i);
-        m_changeItems.append([value](Environment &env) { env.prependOrSetPath(value); });
-    }
+    m_changeItems.append([value](Environment &env) { env.prependOrSetPath(value); });
 }
 
-void EnvironmentChange::addAppendToPath(const FilePaths &values)
+void EnvironmentChange::addAppendToPath(const QString &value)
 {
-    for (const FilePath &value : values)
-        m_changeItems.append([value](Environment &env) { env.appendOrSetPath(value); });
+    m_changeItems.append([value](Environment &env) { env.appendOrSetPath(value); });
 }
 
 void EnvironmentChange::addModify(const NameValueItems &items)
 {
     m_changeItems.append([items](Environment &env) { env.modify(items); });
-}
-
-EnvironmentChange EnvironmentChange::fromFixedEnvironment(const Environment &fixedEnv)
-{
-    EnvironmentChange change;
-    change.m_changeItems.append([fixedEnv](Environment &env) { env = fixedEnv; });
-    return change;
 }
 
 void EnvironmentChange::applyToEnvironment(Environment &env) const

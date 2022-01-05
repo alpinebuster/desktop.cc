@@ -1,5 +1,4 @@
 # set RPATH_BASE to the IDE_..._PATH of the target
-
 isEmpty(RPATH_BASE): \
     error("You must set RPATH_BASE before including rpath.pri")
 

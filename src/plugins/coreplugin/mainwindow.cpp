@@ -1,51 +1,22 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "mainwindow.h"
 
 #include "icore.h"
 #include "jsexpander.h"
-#include "mimetypesettings.h"
 #include "fancytabwidget.h"
 #include "documentmanager.h"
 #include "generalsettings.h"
 #include "idocumentfactory.h"
-#include "messagemanager.h"
 #include "modemanager.h"
 #include "outputpanemanager.h"
 #include "plugindialog.h"
-#include "vcsmanager.h"
 #include "versiondialog.h"
 #include "statusbarmanager.h"
 #include "manhattanstyle.h"
 #include "navigationwidget.h"
 #include "rightpane.h"
-#include "editormanager/ieditorfactory.h"
+#include "homemanager/ieditorfactory.h"
 #include "systemsettings.h"
-#include "externaltoolmanager.h"
-#include "editormanager/systemeditor.h"
+#include "homemanager/systemeditor.h"
 #include "windowsupport.h"
 #include "coreicons.h"
 
@@ -54,13 +25,12 @@
 #include <coreplugin/actionmanager/actionmanager.h>
 #include <coreplugin/actionmanager/actionmanager_p.h>
 #include <coreplugin/actionmanager/command.h>
-#include <coreplugin/dialogs/externaltoolconfig.h>
-#include <coreplugin/iwizardfactory.h>
+#include <coreplugin/dialogs/newdialog.h>
 #include <coreplugin/dialogs/shortcutsettings.h>
-#include <coreplugin/editormanager/documentmodel_p.h>
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/editormanager/editormanager_p.h>
-#include <coreplugin/editormanager/ieditor.h>
+#include <coreplugin/homemanager/documentmodel_p.h>
+#include <coreplugin/homemanager/homemanager.h>
+#include <coreplugin/homemanager/homemanager_p.h>
+#include <coreplugin/homemanager/ieditor.h>
 #include <coreplugin/inavigationwidgetfactory.h>
 #include <coreplugin/progressmanager/progressmanager_p.h>
 #include <coreplugin/progressmanager/progressview.h>
@@ -92,7 +62,6 @@
 #include <QStyleFactory>
 #include <QToolButton>
 #include <QUrl>
-#include <QWindow>
 
 using namespace ExtensionSystem;
 using namespace Utils;
@@ -101,14 +70,6 @@ namespace Core {
 namespace Internal {
 
 enum { debugMainWindow = 0 };
-
-static bool isQtDesignStudio()
-{
-    QSettings *settings = Core::ICore::settings();
-    const QString qdsStandaloneEntry = "QML/Designer/StandAloneMode"; //entry from qml settings
-
-    return settings->value(qdsStandaloneEntry, false).toBool();
-}
 
 MainWindow::MainWindow()
     : AppMainWindow()
@@ -120,14 +81,12 @@ MainWindow::MainWindow()
                                this))
     , m_progressManager(new ProgressManagerPrivate)
     , m_jsExpander(JsExpander::createGlobalJsExpander())
-    , m_vcsManager(new VcsManager)
     , m_modeStack(new FancyTabWidget(this))
     , m_generalSettings(new GeneralSettings)
     , m_systemSettings(new SystemSettings)
     , m_shortcutSettings(new ShortcutSettings)
-    , m_toolSettings(new ToolSettings)
-    , m_mimeTypeSettings(new MimeTypeSettings)
     , m_systemEditor(new SystemEditor)
+    , m_toggleModeSelectorStyleButton(new QToolButton)
     , m_toggleLeftSideBarButton(new QToolButton)
     , m_toggleRightSideBarButton(new QToolButton)
 {
@@ -180,24 +139,19 @@ MainWindow::MainWindow()
     m_rightNavigationWidget = new NavigationWidget(m_toggleRightSideBarAction, Side::Right);
     m_rightPaneWidget = new RightPaneWidget();
 
-    m_messageManager = new MessageManager;
-    m_editorManager = new EditorManager(this);
-    m_externalToolManager = new ExternalToolManager();
+    m_editorManager = new HomeManager(this);
     setCentralWidget(m_modeStack);
 
     m_progressManager->progressView()->setParent(this);
 
     connect(qApp, &QApplication::focusChanged, this, &MainWindow::updateFocusWidget);
 
-    // Add small Toolbuttons for toggling the navigation widgets
-    StatusBarManager::addStatusBarWidget(m_toggleLeftSideBarButton, StatusBarManager::First);
+    // Add (left and right) small Toolbuttons for toggling the navigation widgets
+    StatusBarManager::addStatusBarWidget(m_toggleModeSelectorStyleButton, StatusBarManager::First);
+    StatusBarManager::addStatusBarWidget(m_toggleLeftSideBarButton, StatusBarManager::Second);
     int childsCount = statusBar()->findChildren<QWidget *>(QString(), Qt::FindDirectChildrenOnly).count();
-    statusBar()->insertPermanentWidget(childsCount - 1, m_toggleRightSideBarButton); // before QSizeGrip
-
-//    setUnifiedTitleAndToolBarOnMac(true);
-    //if (HostOsInfo::isAnyUnixHost())
-        //signal(SIGINT, handleSigInt);
-
+    // before QSizeGrip
+    statusBar()->insertPermanentWidget(childsCount - 1, m_toggleRightSideBarButton, 1);
     statusBar()->setProperty("p_styled", true);
 
     auto dropSupport = new DropSupport(this, [](QDropEvent *event, DropSupport *) {
@@ -254,27 +208,17 @@ MainWindow::~MainWindow()
     // from mainwindow, so mainwindow still needs to be alive
     delete m_windowSupport;
     m_windowSupport = nullptr;
-
-    delete m_externalToolManager;
-    m_externalToolManager = nullptr;
-    delete m_messageManager;
-    m_messageManager = nullptr;
     delete m_shortcutSettings;
     m_shortcutSettings = nullptr;
     delete m_generalSettings;
     m_generalSettings = nullptr;
     delete m_systemSettings;
     m_systemSettings = nullptr;
-    delete m_toolSettings;
-    m_toolSettings = nullptr;
-    delete m_mimeTypeSettings;
-    m_mimeTypeSettings = nullptr;
     delete m_systemEditor;
     m_systemEditor = nullptr;
     delete m_printer;
     m_printer = nullptr;
-    delete m_vcsManager;
-    m_vcsManager = nullptr;
+
     //we need to delete editormanager and statusbarmanager explicitly before the end of the destructor,
     //because they might trigger stuff that tries to access data from editorwindow, like removeContextWidget
 
@@ -307,18 +251,17 @@ MainWindow::~MainWindow()
 void MainWindow::init()
 {
     m_progressManager->init(); // needs the status bar manager
-    MessageManager::init();
     OutputPaneManager::create();
 }
 
 void MainWindow::extensionsInitialized()
 {
-    EditorManagerPrivate::extensionsInitialized();
-    MimeTypeSettings::restoreSettings();
+    HomeManagerPrivate::extensionsInitialized();
     m_windowSupport = new WindowSupport(this, Context("Core.MainWindow"));
     m_windowSupport->setCloseActionEnabled(false);
     OutputPaneManager::initialize();
-    VcsManager::extensionsInitialized();
+
+    // Initialize bottom navigationbar (left & right)
     m_leftNavigationWidget->setFactories(INavigationWidgetFactory::allNavigationFactories());
     m_rightNavigationWidget->setFactories(INavigationWidgetFactory::allNavigationFactories());
 
@@ -398,7 +341,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
 void MainWindow::openDroppedFiles(const QList<DropSupport::FileSpec> &files)
 {
     raiseWindow();
-    const FilePaths filePaths = Utils::transform(files, &DropSupport::FileSpec::filePath);
+    QStringList filePaths = Utils::transform(files, &DropSupport::FileSpec::filePath);
     openFiles(filePaths, ICore::SwitchMode);
 }
 
@@ -443,7 +386,6 @@ void MainWindow::registerDefaultContainers()
     filemenu->appendGroup(Constants::G_FILE_PRINT);
     filemenu->appendGroup(Constants::G_FILE_OTHER);
     connect(filemenu->menu(), &QMenu::aboutToShow, this, &MainWindow::aboutToShowRecentFiles);
-
 
     // Edit Menu
     ActionContainer *medit = ActionManager::createMenu(Constants::M_EDIT);
@@ -499,12 +441,12 @@ void MainWindow::registerDefaultContainers()
 
 void MainWindow::registerDefaultActions()
 {
-    ActionContainer *mfile = ActionManager::actionContainer(Constants::M_FILE);
-    ActionContainer *medit = ActionManager::actionContainer(Constants::M_EDIT);
-    ActionContainer *mview = ActionManager::actionContainer(Constants::M_VIEW);
-    ActionContainer *mtools = ActionManager::actionContainer(Constants::M_TOOLS);
+    ActionContainer *mfile   = ActionManager::actionContainer(Constants::M_FILE);
+    ActionContainer *medit   = ActionManager::actionContainer(Constants::M_EDIT);
+    ActionContainer *mview   = ActionManager::actionContainer(Constants::M_VIEW);
+    ActionContainer *mtools  = ActionManager::actionContainer(Constants::M_TOOLS);
     ActionContainer *mwindow = ActionManager::actionContainer(Constants::M_WINDOW);
-    ActionContainer *mhelp = ActionManager::actionContainer(Constants::M_HELP);
+    ActionContainer *mhelp   = ActionManager::actionContainer(Constants::M_HELP);
 
     // File menu separators
     mfile->addSeparator(Constants::G_FILE_SAVE);
@@ -526,50 +468,29 @@ void MainWindow::registerDefaultActions()
     connect(m_focusToEditor, &QAction::triggered, this, &MainWindow::setFocusToEditor);
 
     // New File Action
-    QIcon icon = QIcon::fromTheme(QLatin1String("document-new"), Utils::Icons::NEWFILE.icon());
-
+    QIcon icon = QIcon::fromTheme(QLatin1String("document-new"), Utils::Icons::NEW_PROJECT.icon());
     m_newAction = new QAction(icon, tr("&New Project..."), this);
     cmd = ActionManager::registerAction(m_newAction, Constants::NEW);
-    cmd->setDefaultKeySequence(QKeySequence("Ctrl+Shift+N"));
+    cmd->setDefaultKeySequence(QKeySequence::New);
     mfile->addAction(cmd, Constants::G_FILE_NEW);
     connect(m_newAction, &QAction::triggered, this, []() {
         if (!ICore::isNewItemDialogRunning()) {
-            ICore::showNewItemDialog(
-                tr("New Project", "Title of dialog"),
-                Utils::filtered(Core::IWizardFactory::allWizardFactories(),
-                                Utils::equal(&Core::IWizardFactory::kind,
-                                             Core::IWizardFactory::ProjectWizard)),
-                FilePath());
+            ICore::showNewItemDialog(tr("New Project", "Title of dialog"),
+                                     IWizardFactory::allWizardFactories(), QString());
         } else {
             ICore::raiseWindow(ICore::newItemDialog());
         }
     });
 
-    auto action = new QAction(icon, tr("New File..."), this);
-    cmd = ActionManager::registerAction(action, Constants::NEW_FILE);
-    cmd->setDefaultKeySequence(QKeySequence::New);
-    mfile->addAction(cmd, Constants::G_FILE_NEW);
-    connect(action, &QAction::triggered, this, []() {
-        if (!ICore::isNewItemDialogRunning()) {
-            ICore::showNewItemDialog(tr("New File", "Title of dialog"),
-                                     Utils::filtered(Core::IWizardFactory::allWizardFactories(),
-                                                     Utils::equal(&Core::IWizardFactory::kind,
-                                                                  Core::IWizardFactory::FileWizard)),
-                                     FilePath());
-        } else {
-            ICore::raiseWindow(ICore::newItemDialog());
-        }
-    });
-
-    // Open Action
+    // Open File Action
     icon = QIcon::fromTheme(QLatin1String("document-open"), Utils::Icons::OPENFILE.icon());
-    m_openAction = new QAction(icon, tr("&Open File or Project..."), this);
+    m_openAction = new QAction(icon, tr("&Open File..."), this);
     cmd = ActionManager::registerAction(m_openAction, Constants::OPEN);
     cmd->setDefaultKeySequence(QKeySequence::Open);
     mfile->addAction(cmd, Constants::G_FILE_OPEN);
     connect(m_openAction, &QAction::triggered, this, &MainWindow::openFile);
 
-    // Open With Action
+    // Open File With Action
     m_openWithAction = new QAction(tr("Open File &With..."), this);
     cmd = ActionManager::registerAction(m_openWithAction, Constants::OPEN_WITH);
     mfile->addAction(cmd, Constants::G_FILE_OPEN);
@@ -583,7 +504,7 @@ void MainWindow::registerDefaultActions()
 
     // Save Action
     icon = QIcon::fromTheme(QLatin1String("document-save"), Utils::Icons::SAVEFILE.icon());
-    QAction *tmpaction = new QAction(icon, EditorManager::tr("&Save"), this);
+    QAction *tmpaction = new QAction(icon, HomeManager::tr("&Save"), this);
     tmpaction->setEnabled(false);
     cmd = ActionManager::registerAction(tmpaction, Constants::SAVE);
     cmd->setDefaultKeySequence(QKeySequence::Save);
@@ -593,7 +514,7 @@ void MainWindow::registerDefaultActions()
 
     // Save As Action
     icon = QIcon::fromTheme(QLatin1String("document-save-as"));
-    tmpaction = new QAction(icon, EditorManager::tr("Save &As..."), this);
+    tmpaction = new QAction(icon, HomeManager::tr("Save &As..."), this);
     tmpaction->setEnabled(false);
     cmd = ActionManager::registerAction(tmpaction, Constants::SAVEAS);
     cmd->setDefaultKeySequence(QKeySequence(useMacShortcuts ? tr("Ctrl+Shift+S") : QString()));
@@ -768,6 +689,7 @@ void MainWindow::registerDefaultActions()
     cmd->setDefaultKeySequence(QKeySequence(useMacShortcuts ? tr("Ctrl+0") : tr("Alt+0")));
     connect(m_toggleLeftSideBarAction, &QAction::triggered,
             this, [this](bool visible) { setSidebarVisible(visible, Side::Left); });
+
     ProxyAction *toggleLeftSideBarProxyAction =
             ProxyAction::proxyActionWithIcon(cmd->action(), Utils::Icons::TOGGLE_LEFT_SIDEBAR_TOOLBAR.icon());
     m_toggleLeftSideBarButton->setDefaultAction(toggleLeftSideBarProxyAction);
@@ -812,21 +734,15 @@ void MainWindow::registerDefaultActions()
     cmd = ActionManager::registerAction(tmpaction, Constants::ABOUT_QTCREATOR);
     mhelp->addAction(cmd, Constants::G_HELP_ABOUT);
     tmpaction->setEnabled(true);
-    connect(tmpaction, &QAction::triggered, this, &MainWindow::aboutQtCreator);
+    connect(tmpaction, &QAction::triggered, this, &MainWindow::aboutMFDS);
 
-    //About Plugins Action
+    // About Plugins Action
     tmpaction = new QAction(tr("About &Plugins..."), this);
     tmpaction->setMenuRole(QAction::ApplicationSpecificRole);
     cmd = ActionManager::registerAction(tmpaction, Constants::ABOUT_PLUGINS);
     mhelp->addAction(cmd, Constants::G_HELP_ABOUT);
     tmpaction->setEnabled(true);
     connect(tmpaction, &QAction::triggered, this, &MainWindow::aboutPlugins);
-    // About Qt Action
-//    tmpaction = new QAction(tr("About &Qt..."), this);
-//    cmd = ActionManager::registerAction(tmpaction, Constants:: ABOUT_QT);
-//    mhelp->addAction(cmd, Constants::G_HELP_ABOUT);
-//    tmpaction->setEnabled(true);
-//    connect(tmpaction, &QAction::triggered, qApp, &QApplication::aboutQt);
 
     // Contact
     tmpaction = new QAction(tr("Contact..."), this);
@@ -868,27 +784,41 @@ void MainWindow::registerModeSelectorStyleActions()
     connect(m_setModeSelectorStyleIconsAndTextAction, &QAction::triggered,
                                  [] { ModeManager::setModeStyle(ModeManager::Style::IconsAndText); });
     m_setModeSelectorStyleIconsAndTextAction->setCheckable(true);
+
     m_setModeSelectorStyleIconsOnlyAction = stylesGroup->addAction(tr("Icons Only"));
     connect(m_setModeSelectorStyleIconsOnlyAction, &QAction::triggered,
                                  [] { ModeManager::setModeStyle(ModeManager::Style::IconsOnly); });
     m_setModeSelectorStyleIconsOnlyAction->setCheckable(true);
+
     m_setModeSelectorStyleHiddenAction = stylesGroup->addAction(tr("Hidden"));
     connect(m_setModeSelectorStyleHiddenAction, &QAction::triggered,
                                  [] { ModeManager::setModeStyle(ModeManager::Style::Hidden); });
     m_setModeSelectorStyleHiddenAction->setCheckable(true);
+
+    // Toggle mode selector visibility
+    toggleModeSelectorStyleAction = new QAction(tr("Toggle mode selector visibility"));
+    toggleModeSelectorStyleAction->setIcon(Utils::Icons::CLOSE_SPLIT_LEFT.icon());
+    connect(toggleModeSelectorStyleAction, &QAction::triggered,
+            [] {
+        if (ModeManager::modeStyle() == ModeManager::Style::Hidden)
+            ModeManager::setModeStyle(ModeManager::Style::IconsAndText);
+        else
+            ModeManager::setModeStyle(ModeManager::Style::Hidden);
+    });
+    m_toggleModeSelectorStyleButton->setDefaultAction(toggleModeSelectorStyleAction);
 
     styleMenu->addActions(stylesGroup->actions());
 }
 
 void MainWindow::openFile()
 {
-    openFiles(EditorManager::getOpenFilePaths(), ICore::SwitchMode);
+    openFiles(HomeManager::getOpenFileNames(), ICore::SwitchMode);
 }
 
 static IDocumentFactory *findDocumentFactory(const QList<IDocumentFactory*> &fileFactories,
-                                             const FilePath &filePath)
+                                     const QFileInfo &fi)
 {
-    const QString typeName = Utils::mimeTypeForFile(filePath).name();
+    const QString typeName = Utils::mimeTypeForFile(fi).name();
     return Utils::findOrDefault(fileFactories, [typeName](IDocumentFactory *f) {
         return f->mimeTypes().contains(typeName);
     });
@@ -896,7 +826,7 @@ static IDocumentFactory *findDocumentFactory(const QList<IDocumentFactory*> &fil
 
 /*!
  * \internal
- * Either opens \a filePaths with editors or loads a project.
+ * Either opens \a fileNames with editors or loads a project.
  *
  *  \a flags can be used to stop on first failure, indicate that a file name
  *  might include line numbers and/or switch mode to edit mode.
@@ -909,24 +839,18 @@ static IDocumentFactory *findDocumentFactory(const QList<IDocumentFactory*> &fil
  *
  *  \sa IPlugin::remoteArguments()
  */
-IDocument *MainWindow::openFiles(const FilePaths &filePaths,
+IDocument *MainWindow::openFiles(const QStringList &fileNames,
                                  ICore::OpenFilesFlags flags,
                                  const QString &workingDirectory)
 {
     const QList<IDocumentFactory*> documentFactories = IDocumentFactory::allDocumentFactories();
     IDocument *res = nullptr;
 
-    const QString workingDirBase = workingDirectory.isEmpty() ? QDir::currentPath() : workingDirectory;
-    for (const FilePath &filePath : filePaths) {
-        const FilePath workingDir = filePath.withNewPath(workingDirBase);
-        FilePath absoluteFilePath;
-        if (filePath.isAbsolutePath()) {
-            absoluteFilePath = filePath;
-        } else {
-            QTC_CHECK(!filePath.needsDevice());
-            absoluteFilePath = FilePath::fromString(workingDirBase).resolvePath(filePath.path());
-        }
-        if (IDocumentFactory *documentFactory = findDocumentFactory(documentFactories, filePath)) {
+    for (const QString &fileName : fileNames) {
+        const QDir workingDir(workingDirectory.isEmpty() ? QDir::currentPath() : workingDirectory);
+        const QFileInfo fi(workingDir, fileName);
+        const QString absoluteFilePath = fi.absoluteFilePath();
+        if (IDocumentFactory *documentFactory = findDocumentFactory(documentFactories, fi)) {
             IDocument *document = documentFactory->open(absoluteFilePath);
             if (!document) {
                 if (flags & ICore::StopOnLoadFail)
@@ -935,19 +859,20 @@ IDocument *MainWindow::openFiles(const FilePaths &filePaths,
                 if (!res)
                     res = document;
                 if (flags & ICore::SwitchMode)
-                    ModeManager::activateMode(Id(Constants::MODE_EDIT));
+                    ModeManager::activateMode(Id(Constants::MODE_HOME));
             }
         } else if (flags & (ICore::SwitchSplitIfAlreadyVisible | ICore::CanContainLineAndColumnNumbers)
                    || !res) {
-            QFlags<EditorManager::OpenEditorFlag> emFlags;
+            QFlags<HomeManager::OpenEditorFlag> emFlags;
             if (flags & ICore::SwitchSplitIfAlreadyVisible)
-                emFlags |= EditorManager::SwitchSplitIfAlreadyVisible;
+                emFlags |= HomeManager::SwitchSplitIfAlreadyVisible;
             IEditor *editor = nullptr;
             if (flags & ICore::CanContainLineAndColumnNumbers) {
-                const Link &link = Link::fromFilePath(absoluteFilePath, true);
-                editor = EditorManager::openEditorAt(link, {}, emFlags);
+                const Link &link = Link::fromString(absoluteFilePath, true);
+                editor = HomeManager::openEditorAt(link, {}, emFlags);
             } else {
-                editor = EditorManager::openEditor(absoluteFilePath, {}, emFlags);
+                const FilePath &filePath = FilePath::fromString(absoluteFilePath);
+                editor = HomeManager::openEditor(filePath, {}, emFlags);
             }
             if (!editor) {
                 if (flags & ICore::StopOnLoadFail)
@@ -956,8 +881,9 @@ IDocument *MainWindow::openFiles(const FilePaths &filePaths,
                 res = editor->document();
             }
         } else {
-            auto factory = IEditorFactory::preferredEditorFactories(absoluteFilePath).value(0);
-            DocumentModelPrivate::addSuspendedDocument(absoluteFilePath, {},
+            auto *factory = IEditorFactory::preferredEditorFactories(absoluteFilePath).value(0);
+            DocumentModelPrivate::addSuspendedDocument(absoluteFilePath,
+                                                       {},
                                                        factory ? factory->id() : Id());
         }
     }
@@ -966,21 +892,7 @@ IDocument *MainWindow::openFiles(const FilePaths &filePaths,
 
 void MainWindow::setFocusToEditor()
 {
-    EditorManagerPrivate::doEscapeKeyFocusMoveMagic();
-}
-
-static void acceptModalDialogs()
-{
-    const QWidgetList topLevels = QApplication::topLevelWidgets();
-    QList<QDialog *> dialogsToClose;
-    for (QWidget *topLevel : topLevels) {
-        if (auto dialog = qobject_cast<QDialog *>(topLevel)) {
-            if (dialog->isModal())
-                dialogsToClose.append(dialog);
-        }
-    }
-    for (QDialog *dialog : dialogsToClose)
-        dialog->accept();
+    HomeManagerPrivate::doEscapeKeyFocusMoveMagic();
 }
 
 void MainWindow::exit()
@@ -990,29 +902,20 @@ void MainWindow::exit()
     // since on close we are going to delete everything
     // so to prevent the deleting of that object we
     // just append it
-    QMetaObject::invokeMethod(
-        this,
-        [this] {
-            // Modal dialogs block the close event. So close them, in case this was triggered from
-            // a RestartDialog in the settings dialog.
-            acceptModalDialogs();
-            close();
-        },
-        Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this,  &QWidget::close, Qt::QueuedConnection);
 }
 
 void MainWindow::openFileWith()
 {
-    const FilePaths filePaths = EditorManager::getOpenFilePaths();
-    for (const FilePath &filePath : filePaths) {
+    foreach (const QString &fileName, HomeManager::getOpenFileNames()) {
         bool isExternal;
-        const Id editorId = EditorManagerPrivate::getOpenWithEditorId(filePath, &isExternal);
+        const Id editorId = HomeManagerPrivate::getOpenWithEditorId(fileName, &isExternal);
         if (!editorId.isValid())
             continue;
         if (isExternal)
-            EditorManager::openExternalEditor(filePath, editorId);
+            HomeManager::openExternalEditor(FilePath::fromString(fileName), editorId);
         else
-            EditorManagerPrivate::openEditorWith(filePath, editorId);
+            HomeManagerPrivate::openEditorWith(FilePath::fromString(fileName), editorId);
     }
 }
 
@@ -1099,14 +1002,13 @@ void MainWindow::aboutToShutdown()
     hide();
 }
 
-static const char settingsGroup[] = "MainWindow";
-static const char colorKey[] = "Color";
-static const char askBeforeExitKey[] = "AskBeforeExit";
-static const char windowGeometryKey[] = "WindowGeometry";
-static const char windowStateKey[] = "WindowState";
+static const char settingsGroup[]         = "MainWindow";
+static const char colorKey[]              = "Color";
+static const char askBeforeExitKey[]      = "AskBeforeExit";
+static const char windowGeometryKey[]     = "WindowGeometry";
+static const char windowStateKey[]        = "WindowState";
 static const char modeSelectorLayoutKey[] = "ModeSelectorLayout";
-
-static const bool askBeforeExitDefault = false;
+static const bool askBeforeExitDefault    = false;
 
 void MainWindow::readSettings()
 {
@@ -1141,7 +1043,7 @@ void MainWindow::readSettings()
 
     settings->endGroup();
 
-    EditorManagerPrivate::readSettings();
+    HomeManagerPrivate::readSettings();
     m_leftNavigationWidget->restoreSettings(settings);
     m_rightNavigationWidget->restoreSettings(settings);
     m_rightPaneWidget->readSettings(settings);
@@ -1165,7 +1067,7 @@ void MainWindow::saveSettings()
 
     DocumentManager::saveSettings();
     ActionManager::saveSettings();
-    EditorManagerPrivate::saveSettings();
+    HomeManagerPrivate::saveSettings();
     m_leftNavigationWidget->saveSettings(settings);
     m_rightNavigationWidget->saveSettings(settings);
 }
@@ -1251,18 +1153,18 @@ void MainWindow::updateContext()
 void MainWindow::aboutToShowRecentFiles()
 {
     ActionContainer *aci = ActionManager::actionContainer(Constants::M_FILE_RECENTFILES);
-    QMenu *menu = aci->menu();
+    QMenu *menu          = aci->menu();
     menu->clear();
 
     const QList<DocumentManager::RecentFile> recentFiles = DocumentManager::recentFiles();
     for (int i = 0; i < recentFiles.count(); ++i) {
         const DocumentManager::RecentFile file = recentFiles[i];
 
-        const QString filePath = Utils::quoteAmpersands(file.first.shortNativePath());
+        const QString filePath   = Utils::quoteAmpersands(file.first.shortNativePath());
         const QString actionText = ActionManager::withNumberAccelerator(filePath, i + 1);
-        QAction *action = menu->addAction(actionText);
+        QAction *action          = menu->addAction(actionText);
         connect(action, &QAction::triggered, this, [file] {
-            EditorManager::openEditor(file.first, file.second);
+            HomeManager::openEditor(file.first, file.second);
         });
     }
 
@@ -1279,7 +1181,7 @@ void MainWindow::aboutToShowRecentFiles()
     }
 }
 
-void MainWindow::aboutQtCreator()
+void MainWindow::aboutMFDS()
 {
     if (!m_versionDialog) {
         m_versionDialog = new VersionDialog(this);
@@ -1309,25 +1211,25 @@ void MainWindow::aboutPlugins()
 void MainWindow::contact()
 {
     QMessageBox dlg(QMessageBox::Information, tr("Contact"),
-           tr("<p>Qt Creator developers can be reached at the Qt Creator mailing list:</p>"
+           tr("<p>MFDS developers can be reached at the MFDS mailing list:</p>"
               "%1"
-              "<p>or the #qt-creator channel on Libera.Chat IRC:</p>"
+              "<p>or the offcial account on WeChat:</p>"
               "%2"
               "<p>Our bug tracker is located at %3.</p>"
               "<p>Please use %4 for bigger chunks of text.</p>")
                     .arg("<p>&nbsp;&nbsp;&nbsp;&nbsp;"
-                            "<a href=\"https://lists.qt-project.org/listinfo/qt-creator\">"
-                            "mailto:qt-creator@qt-project.org"
+                            "<a href=\"https://scumed.machineilab.org\">"
+                            "MachineILab@gmail.com"
                          "</a></p>")
                     .arg("<p>&nbsp;&nbsp;&nbsp;&nbsp;"
-                            "<a href=\"https://web.libera.chat/#qt-creator\">"
-                            "https://web.libera.chat/#qt-creator"
+                            "<a href=\"https://scumed.machineilab.org\">"
+                            "https://scumed.machineilab.org"
                          "</a></p>")
-                    .arg("<a href=\"https://bugreports.qt.io/projects/QTCREATORBUG\">"
-                            "https://bugreports.qt.io"
+                    .arg("<a href=\"https://scumed.machineilab.org\">"
+                            "https://scumed.machineilab.org"
                          "</a>")
-                    .arg("<a href=\"https://pastebin.com\">"
-                            "https://pastebin.com"
+                    .arg("<a href=\"https://scumed.machineilab.org\">"
+                            "https://scumed.machineilab.org"
                          "</a>"),
            QMessageBox::Ok, this);
     dlg.exec();

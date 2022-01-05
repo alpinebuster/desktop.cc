@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "iwizardfactory.h"
 
 #include "actionmanager/actionmanager.h"
@@ -34,12 +9,10 @@
 #include <extensionsystem/pluginmanager.h>
 
 #include <utils/fileutils.h>
-#include <utils/icon.h>
 #include <utils/qtcassert.h>
 #include <utils/wizard.h>
 
 #include <QAction>
-#include <QPainter>
 
 /*!
     \class Core::IWizardFactory
@@ -54,7 +27,7 @@
     {Adding New Custom Wizards}.
 
     The wizard interface is a very thin abstraction for the wizards in
-    \uicontrol File > \uicontrol {New File} and \uicontrol{New Project}.
+    \uicontrol File > \uicontrol {New File or Project}.
     Basically, it defines what to show to the user in the wizard selection dialogs,
     and a hook that is called if the user selects the wizard.
 
@@ -143,7 +116,7 @@ class NewItemDialogData
 {
 public:
     void setData(const QString &t, const QList<IWizardFactory *> &f,
-                 const FilePath &dl, const QVariantMap &ev)
+                 const QString &dl, const QVariantMap &ev)
     {
         QTC_ASSERT(!hasData(), return);
 
@@ -175,7 +148,7 @@ public:
 private:
     QString title;
     QList<IWizardFactory *> factories;
-    FilePath defaultLocation;
+    QString defaultLocation;
     QVariantMap extraVariables;
 };
 
@@ -215,7 +188,7 @@ QList<IWizardFactory*> IWizardFactory::allWizardFactories()
 
                 connect(newFactory->m_action, &QAction::triggered, newFactory, [newFactory]() {
                     if (!ICore::isNewItemDialogRunning()) {
-                        FilePath path = newFactory->runPath({});
+                        QString path = newFactory->runPath(QString());
                         newFactory->runWizard(path, ICore::dialogParent(), Id(), QVariantMap());
                     }
                 });
@@ -229,9 +202,9 @@ QList<IWizardFactory*> IWizardFactory::allWizardFactories()
     return s_allFactories;
 }
 
-FilePath IWizardFactory::runPath(const FilePath &defaultPath) const
+QString IWizardFactory::runPath(const QString &defaultPath) const
 {
-    FilePath path = defaultPath;
+    QString path = defaultPath;
     if (path.isEmpty()) {
         switch (kind()) {
         case IWizardFactory::ProjectWizard:
@@ -239,7 +212,7 @@ FilePath IWizardFactory::runPath(const FilePath &defaultPath) const
             // use last visited directory of file dialog. Never start
             // at current.
             path = DocumentManager::useProjectsDirectory()
-                       ? DocumentManager::projectsDirectory()
+                       ? DocumentManager::projectsDirectory().toString()
                        : DocumentManager::fileDialogLastVisitedDirectory();
             break;
         default:
@@ -259,17 +232,14 @@ FilePath IWizardFactory::runPath(const FilePath &defaultPath) const
     created. The wizard should fill this in its path selection elements as a
     default path.
 */
-Wizard *IWizardFactory::runWizard(const FilePath &path, QWidget *parent, Id platform,
-                                  const QVariantMap &variables,
-                                  bool showWizard)
+Utils::Wizard *IWizardFactory::runWizard(const QString &path, QWidget *parent, Id platform, const QVariantMap &variables)
 {
     QTC_ASSERT(!s_isWizardRunning, return nullptr);
 
     s_isWizardRunning = true;
     ICore::updateNewItemDialogState();
 
-    Utils::Wizard *wizard = runWizardImpl(path, parent, platform, variables, showWizard);
-
+    Utils::Wizard *wizard = runWizardImpl(path, parent, platform, variables);
 
     if (wizard) {
         s_currentWizard = wizard;
@@ -291,10 +261,8 @@ Wizard *IWizardFactory::runWizard(const FilePath &path, QWidget *parent, Id plat
             s_reopenData.reopen();
         });
         s_inspectWizardAction->setEnabled(true);
-        if (showWizard) {
-            wizard->show();
-            Core::ICore::registerWindow(wizard, Core::Context("Core.NewWizard"));
-        }
+        wizard->show();
+        Core::ICore::registerWindow(wizard, Core::Context("Core.NewWizard"));
     } else {
         s_isWizardRunning = false;
         ICore::updateNewItemDialogState();
@@ -365,15 +333,10 @@ QWidget *IWizardFactory::currentWizard()
 
 void IWizardFactory::requestNewItemDialog(const QString &title,
                                           const QList<IWizardFactory *> &factories,
-                                          const FilePath &defaultLocation,
+                                          const QString &defaultLocation,
                                           const QVariantMap &extraVariables)
 {
     s_reopenData.setData(title, factories, defaultLocation, extraVariables);
-}
-
-QIcon IWizardFactory::themedIcon(const Utils::FilePath &iconMaskPath)
-{
-    return Utils::Icon({{iconMaskPath, Theme::PanelTextColorDark}}, Icon::Tint).icon();
 }
 
 void IWizardFactory::destroyFeatureProvider()
@@ -429,58 +392,4 @@ void IWizardFactory::initialize()
 
     s_inspectWizardAction = new QAction(tr("Inspect Wizard State"), ActionManager::instance());
     ActionManager::registerAction(s_inspectWizardAction, "Wizard.Inspect");
-}
-
-static QIcon iconWithText(const QIcon &icon, const QString &text)
-{
-    if (icon.isNull()) {
-        static const QIcon fallBack =
-                IWizardFactory::themedIcon(":/utils/images/wizardicon-file.png");
-        return iconWithText(fallBack, text);
-    }
-
-    if (text.isEmpty())
-        return icon;
-
-    QIcon iconWithText;
-    for (const QSize &pixmapSize : icon.availableSizes()) {
-        QPixmap pixmap = icon.pixmap(pixmapSize);
-        const qreal originalPixmapDpr = pixmap.devicePixelRatio();
-        pixmap.setDevicePixelRatio(1); // Hack for QTCREATORBUG-26315
-        const int fontSize = pixmap.height() / 4;
-        const int margin = pixmap.height() / 8;
-        QFont font;
-        font.setPixelSize(fontSize);
-        font.setStretch(85);
-        QPainter p(&pixmap);
-        p.setPen(Utils::creatorTheme()->color(Theme::PanelTextColorDark));
-        p.setFont(font);
-        QTextOption textOption(Qt::AlignHCenter | Qt::AlignBottom);
-        textOption.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
-        p.drawText(pixmap.rect().adjusted(margin, margin, -margin, -margin), text, textOption);
-        p.end();
-        pixmap.setDevicePixelRatio(originalPixmapDpr);
-        iconWithText.addPixmap(pixmap);
-    }
-    return iconWithText;
-}
-
-void IWizardFactory::setIcon(const QIcon &icon, const QString &iconText)
-{
-    m_icon = iconWithText(icon, iconText);
-}
-
-void IWizardFactory::setDetailsPageQmlPath(const QString &filePath)
-{
-    if (filePath.isEmpty())
-        return;
-
-    if (filePath.startsWith(':')) {
-        m_detailsPageQmlPath.setScheme(QLatin1String("qrc"));
-        QString path = filePath;
-        path.remove(0, 1);
-        m_detailsPageQmlPath.setPath(path);
-    } else {
-        m_detailsPageQmlPath = QUrl::fromLocalFile(filePath);
-    }
 }

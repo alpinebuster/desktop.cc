@@ -1,4 +1,4 @@
-include(../../qtcreatorplugin.pri)
+include(../../mfds_plugin.pri)
 
 HEADERS += \
     exportdialog.h \

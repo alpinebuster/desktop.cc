@@ -1,37 +1,12 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "readonlyfilesdialog.h"
 #include "ui_readonlyfilesdialog.h"
 
-#include <coreplugin/editormanager/editormanager_p.h>
+#include <coreplugin/homemanager/homemanager_p.h>
 #include <coreplugin/fileiconprovider.h>
 #include <coreplugin/icore.h>
 #include <coreplugin/idocument.h>
-#include <coreplugin/iversioncontrol.h>
-#include <coreplugin/vcsmanager.h>
+//#include <coreplugin/iversioncontrol.h>
+//#include <coreplugin/vcsmanager.h>
 
 #include <utils/algorithm.h>
 #include <utils/fileutils.h>
@@ -61,7 +36,7 @@ public:
 
     enum ReadOnlyFilesTreeColumn {
         MakeWritable = ReadOnlyFilesDialog::MakeWritable,
-        OpenWithVCS = ReadOnlyFilesDialog::OpenWithVCS,
+//        OpenWithVCS = ReadOnlyFilesDialog::OpenWithVCS,
         SaveAs = ReadOnlyFilesDialog::SaveAs,
         FileName = ReadOnlyFilesDialog::FileName,
         Folder = ReadOnlyFilesDialog::Folder,
@@ -87,11 +62,11 @@ public:
 
     QMap <int, int> setAllIndexForOperation;
     // The version control systems for every file, if the file isn't in VCS the value is 0.
-    QHash<FilePath, IVersionControl*> versionControls;
+//    QHash<FilePath, IVersionControl*> versionControls;
 
     // Define if some specific operations should be allowed to make the files writable.
     const bool useSaveAs;
-    bool useVCS;
+//    bool useVCS;
 
     // Define if an error should be displayed when an operation fails.
     bool showWarnings;
@@ -113,12 +88,12 @@ public:
 ReadOnlyFilesDialogPrivate::ReadOnlyFilesDialogPrivate(ReadOnlyFilesDialog *parent, IDocument *document, bool displaySaveAs)
     : q(parent)
     , useSaveAs(displaySaveAs)
-    , useVCS(false)
+//    , useVCS(false)
     , showWarnings(false)
     , document(document)
     , mixedText(tr("Mixed"))
     , makeWritableText(tr("Make Writable"))
-    , versionControlOpenText(tr("Open with VCS"))
+//    , versionControlOpenText(tr("Open with VCS"))
     , saveAsText(tr("Save As"))
 {}
 
@@ -230,26 +205,26 @@ void ReadOnlyFilesDialogPrivate::promptFailWarning(const FilePaths &files, ReadO
     if (files.count() == 1) {
         const FilePath file = files.first();
         switch (type) {
-        case ReadOnlyFilesDialog::RO_OpenVCS: {
-            if (IVersionControl *vc = versionControls[file]) {
-                const QString openText = Utils::stripAccelerator(vc->vcsOpenText());
-                title = tr("Failed to %1 File").arg(openText);
-                message = tr("%1 file %2 from version control system %3 failed.")
-                        .arg(openText)
-                        .arg(file.toUserOutput())
-                        .arg(vc->displayName())
-                    + '\n'
-                    + failWarning;
-            } else {
-                title = tr("No Version Control System Found");
-                message = tr("Cannot open file %1 from version control system.\n"
-                             "No version control system found.")
-                        .arg(file.toUserOutput())
-                    + '\n'
-                    + failWarning;
-            }
-            break;
-        }
+//        case ReadOnlyFilesDialog::RO_OpenVCS: {
+//            if (IVersionControl *vc = versionControls[file]) {
+//                const QString openText = Utils::stripAccelerator(vc->vcsOpenText());
+//                title = tr("Failed to %1 File").arg(openText);
+//                message = tr("%1 file %2 from version control system %3 failed.")
+//                        .arg(openText)
+//                        .arg(file.toUserOutput())
+//                        .arg(vc->displayName())
+//                    + '\n'
+//                    + failWarning;
+//            } else {
+//                title = tr("No Version Control System Found");
+//                message = tr("Cannot open file %1 from version control system.\n"
+//                             "No version control system found.")
+//                        .arg(file.toUserOutput())
+//                    + '\n'
+//                    + failWarning;
+//            }
+//            break;
+//        }
         case ReadOnlyFilesDialog::RO_MakeWritable:
             title = tr("Cannot Set Permissions");
             message = tr("Cannot set permissions for %1 to writable.")
@@ -307,14 +282,14 @@ int ReadOnlyFilesDialog::exec()
                 continue;
             }
             break;
-        case RO_OpenVCS:
-            if (!d->versionControls[buttongroup.filePath]->vcsOpen(buttongroup.filePath)) {
-                failedToMakeWritable << buttongroup.filePath;
-                continue;
-            }
-            break;
+//        case RO_OpenVCS:
+//            if (!d->versionControls[buttongroup.filePath]->vcsOpen(buttongroup.filePath.toString())) {
+//                failedToMakeWritable << buttongroup.filePath;
+//                continue;
+//            }
+//            break;
         case RO_SaveAs:
-            if (!EditorManagerPrivate::saveDocumentAs(d->document)) {
+            if (!HomeManagerPrivate::saveDocumentAs(d->document)) {
                 failedToMakeWritable << buttongroup.filePath;
                 continue;
             }
@@ -365,8 +340,8 @@ void ReadOnlyFilesDialogPrivate::setAll(int index)
     ReadOnlyFilesTreeColumn type = NumberOfColumns;
     if (index == setAllIndexForOperation[MakeWritable])
         type = MakeWritable;
-    else if (index == setAllIndexForOperation[OpenWithVCS])
-        type = OpenWithVCS;
+//    else if (index == setAllIndexForOperation[OpenWithVCS])
+//        type = OpenWithVCS;
     else if (index == setAllIndexForOperation[SaveAs])
         type = SaveAs;
 
@@ -410,8 +385,8 @@ void ReadOnlyFilesDialogPrivate::initDialog(const FilePaths &filePaths)
     ui.buttonBox->addButton(tr("Change &Permission"), QDialogButtonBox::AcceptRole);
     ui.buttonBox->addButton(QDialogButtonBox::Cancel);
 
-    QString vcsOpenTextForAll;
-    QString vcsMakeWritableTextForAll;
+//    QString vcsOpenTextForAll;
+//    QString vcsMakeWritableTextForAll;
     bool useMakeWritable = false;
     for (const FilePath &filePath : filePaths) {
         const QString visibleName = filePath.fileName();
@@ -426,41 +401,41 @@ void ReadOnlyFilesDialogPrivate::initDialog(const FilePaths &filePaths)
 
         // Add a button for opening the file with a version control system
         // if the file is managed by an version control system which allows opening files.
-        IVersionControl *versionControlForFile =
-                VcsManager::findVersionControlForDirectory(directory);
-        const bool fileManagedByVCS = versionControlForFile
-                && versionControlForFile->openSupportMode(filePath) != IVersionControl::NoOpen;
-        if (fileManagedByVCS) {
-            const QString vcsOpenTextForFile =
-                    Utils::stripAccelerator(versionControlForFile->vcsOpenText());
-            const QString vcsMakeWritableTextforFile =
-                    Utils::stripAccelerator(versionControlForFile->vcsMakeWritableText());
-            if (!useVCS) {
-                vcsOpenTextForAll = vcsOpenTextForFile;
-                vcsMakeWritableTextForAll = vcsMakeWritableTextforFile;
-                useVCS = true;
-            } else {
-                // If there are different open or make writable texts choose the default one.
-                if (vcsOpenTextForFile != vcsOpenTextForAll)
-                    vcsOpenTextForAll.clear();
-                if (vcsMakeWritableTextforFile != vcsMakeWritableTextForAll)
-                    vcsMakeWritableTextForAll.clear();
-            }
-            // Add make writable if it is supported by the reposetory.
-            if (versionControlForFile->openSupportMode(filePath) == IVersionControl::OpenOptional) {
-                useMakeWritable = true;
-                createRadioButtonForItem(item, radioButtonGroup, MakeWritable);
-            }
-            createRadioButtonForItem(item, radioButtonGroup, OpenWithVCS)->setChecked(true);
-        } else {
+//        IVersionControl *versionControlForFile =
+//                VcsManager::findVersionControlForDirectory(directory.toString());
+//        const bool fileManagedByVCS = versionControlForFile
+//                && versionControlForFile->openSupportMode(filePath.toString()) != IVersionControl::NoOpen;
+//        if (fileManagedByVCS) {
+//            const QString vcsOpenTextForFile =
+//                    Utils::stripAccelerator(versionControlForFile->vcsOpenText());
+//            const QString vcsMakeWritableTextforFile =
+//                    Utils::stripAccelerator(versionControlForFile->vcsMakeWritableText());
+//            if (!useVCS) {
+//                vcsOpenTextForAll = vcsOpenTextForFile;
+//                vcsMakeWritableTextForAll = vcsMakeWritableTextforFile;
+//                useVCS = true;
+//            } else {
+//                // If there are different open or make writable texts choose the default one.
+//                if (vcsOpenTextForFile != vcsOpenTextForAll)
+//                    vcsOpenTextForAll.clear();
+//                if (vcsMakeWritableTextforFile != vcsMakeWritableTextForAll)
+//                    vcsMakeWritableTextForAll.clear();
+//            }
+//            // Add make writable if it is supported by the reposetory.
+//            if (versionControlForFile->openSupportMode(filePath.toString()) == IVersionControl::OpenOptional) {
+//                useMakeWritable = true;
+//                createRadioButtonForItem(item, radioButtonGroup, MakeWritable);
+//            }
+//            createRadioButtonForItem(item, radioButtonGroup, OpenWithVCS)->setChecked(true);
+//        } else {
             useMakeWritable = true;
             createRadioButtonForItem(item, radioButtonGroup, MakeWritable)->setChecked(true);
-        }
+//        }
         // Add a Save As radio button if requested.
         if (useSaveAs)
             createRadioButtonForItem(item, radioButtonGroup, SaveAs);
         // If the file is managed by a version control system save the vcs for this file.
-        versionControls[filePath] = fileManagedByVCS ? versionControlForFile : nullptr;
+//        versionControls[filePath] = fileManagedByVCS ? versionControlForFile : nullptr;
 
         // Also save the buttongroup for every file to get the result for each entry.
         buttonGroups.append({filePath, radioButtonGroup});
@@ -473,18 +448,18 @@ void ReadOnlyFilesDialogPrivate::initDialog(const FilePaths &filePaths)
         ui.treeWidget->setAlternatingRowColors(true);
 
     // Do not show any options to the user if he has no choice.
-    if (!useSaveAs && (!useVCS || !useMakeWritable)) {
+    if (!useSaveAs && (/*!useVCS ||*/ !useMakeWritable)) {
         ui.treeWidget->setColumnHidden(MakeWritable, true);
-        ui.treeWidget->setColumnHidden(OpenWithVCS, true);
+//        ui.treeWidget->setColumnHidden(OpenWithVCS, true);
         ui.treeWidget->setColumnHidden(SaveAs, true);
         ui.treeWidget->resizeColumnToContents(FileName);
         ui.treeWidget->resizeColumnToContents(Folder);
         ui.setAll->setVisible(false);
         ui.setAllLabel->setVisible(false);
         ui.verticalLayout->removeItem(ui.setAllLayout);
-        if (useVCS)
-            ui.msgLabel->setText(tr("The following files are not checked out yet.\n"
-                                     "Do you want to check them out now?"));
+//        if (useVCS)
+//            ui.msgLabel->setText(tr("The following files are not checked out yet.\n"
+//                                     "Do you want to check them out now?"));
         return;
     }
 
@@ -498,21 +473,21 @@ void ReadOnlyFilesDialogPrivate::initDialog(const FilePaths &filePaths)
     // Add items to the Set all combo box.
     ui.setAll->addItem(mixedText);
     setAllIndexForOperation[-1/*mixed*/] = ui.setAll->count() - 1;
-    if (useVCS) {
-        // If the files are managed by just one version control system, the Open and Make Writable
-        // text for the specific system is used.
-        if (!vcsOpenTextForAll.isEmpty() && vcsOpenTextForAll != versionControlOpenText) {
-            versionControlOpenText = vcsOpenTextForAll;
-            ui.treeWidget->headerItem()->setText(OpenWithVCS, versionControlOpenText);
-        }
-        if (!vcsMakeWritableTextForAll.isEmpty() && vcsMakeWritableTextForAll != makeWritableText) {
-            makeWritableText = vcsMakeWritableTextForAll;
-            ui.treeWidget->headerItem()->setText(MakeWritable, makeWritableText);
-        }
-        ui.setAll->addItem(versionControlOpenText);
-        ui.setAll->setCurrentIndex(ui.setAll->count() - 1);
-        setAllIndexForOperation[OpenWithVCS] = ui.setAll->count() - 1;
-    }
+//    if (useVCS) {
+//        // If the files are managed by just one version control system, the Open and Make Writable
+//        // text for the specific system is used.
+//        if (!vcsOpenTextForAll.isEmpty() && vcsOpenTextForAll != versionControlOpenText) {
+//            versionControlOpenText = vcsOpenTextForAll;
+//            ui.treeWidget->headerItem()->setText(OpenWithVCS, versionControlOpenText);
+//        }
+//        if (!vcsMakeWritableTextForAll.isEmpty() && vcsMakeWritableTextForAll != makeWritableText) {
+//            makeWritableText = vcsMakeWritableTextForAll;
+//            ui.treeWidget->headerItem()->setText(MakeWritable, makeWritableText);
+//        }
+//        ui.setAll->addItem(versionControlOpenText);
+//        ui.setAll->setCurrentIndex(ui.setAll->count() - 1);
+//        setAllIndexForOperation[OpenWithVCS] = ui.setAll->count() - 1;
+//    }
     if (useMakeWritable) {
         ui.setAll->addItem(makeWritableText);
         setAllIndexForOperation[MakeWritable] = ui.setAll->count() - 1;
@@ -528,7 +503,7 @@ void ReadOnlyFilesDialogPrivate::initDialog(const FilePaths &filePaths)
 
     // Filter which columns should be visible and resize them to content.
     for (int i = 0; i < NumberOfColumns; ++i) {
-        if ((i == SaveAs && !useSaveAs) || (i == OpenWithVCS && !useVCS)
+        if ((i == SaveAs && !useSaveAs) /*|| (i == OpenWithVCS && !useVCS)*/
                 || (i == MakeWritable && !useMakeWritable)) {
             ui.treeWidget->setColumnHidden(i, true);
             continue;

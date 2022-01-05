@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "icore.h"
 
 #include "windowsupport.h"
@@ -32,7 +7,6 @@
 #include <extensionsystem/pluginmanager.h>
 
 #include <utils/qtcassert.h>
-#include <utils/algorithm.h>
 
 #include <QApplication>
 #include <QDebug>
@@ -142,7 +116,6 @@
     from the focus object as well as the additional context.
 */
 
-#include "dialogs/newdialogwidget.h"
 #include "dialogs/newdialog.h"
 #include "iwizardfactory.h"
 #include "mainwindow.h"
@@ -166,13 +139,6 @@ namespace Core {
 // The Core Singleton
 static ICore *m_instance = nullptr;
 static MainWindow *m_mainwindow = nullptr;
-
-static NewDialog *defaultDialogFactory(QWidget *parent)
-{
-    return new NewDialogWidget(parent);
-}
-
-static std::function<NewDialog *(QWidget *)> m_newDialogFactory = defaultDialogFactory;
 
 /*!
     Returns the pointer to the instance. Only use for connecting to signals.
@@ -223,8 +189,6 @@ ICore::ICore(MainWindow *mainwindow)
         emit coreAboutToClose();
         QCoreApplication::exit(exitCode);
     });
-
-    FileUtils::setDialogParentGetter(&ICore::dialogParent);
 }
 
 /*!
@@ -254,28 +218,12 @@ ICore::~ICore()
 */
 void ICore::showNewItemDialog(const QString &title,
                               const QList<IWizardFactory *> &factories,
-                              const FilePath &defaultLocation,
+                              const QString &defaultLocation,
                               const QVariantMap &extraVariables)
 {
     QTC_ASSERT(!isNewItemDialogRunning(), return);
-
-    /* This is a workaround for QDS: In QDS, we currently have a "New Project" dialog box but we do
-     * not also have a "New file" dialog box (yet). Therefore, when requested to add a new file, we
-     * need to use QtCreator's dialog box. In QDS, if `factories` contains project wizard factories
-     * (even though it may contain file wizard factories as well), then we consider it to be a
-     * request for "New Project". Otherwise, if we only have file wizard factories, we defer to
-     * QtCreator's dialog and request "New File"
-     */
-    auto dialogFactory = m_newDialogFactory;
-    bool haveProjectWizards = Utils::anyOf(factories, [](IWizardFactory *f) {
-        return f->kind() == IWizardFactory::ProjectWizard;
-    });
-
-    if (!haveProjectWizards)
-        dialogFactory = defaultDialogFactory;
-
-    NewDialog *newDialog = dialogFactory(dialogParent());
-    connect(newDialog->widget(), &QObject::destroyed, m_instance, &ICore::updateNewItemDialogState);
+    auto newDialog = new NewDialog(dialogParent());
+    connect(newDialog, &QObject::destroyed, m_instance, &ICore::updateNewItemDialogState);
     newDialog->setWizardFactories(factories, defaultLocation, extraVariables);
     newDialog->setWindowTitle(title);
     newDialog->showDialog();
@@ -426,7 +374,7 @@ static QString pathHelper(const QString &rel)
     return '/' + rel;
 }
 /*!
-    Returns the absolute path for the relative path \a rel that is used for resources like
+    Returns the absolute path that is used for resources like
     project templates and the debugger macros.
 
     This abstraction is needed to avoid platform-specific code all over
@@ -443,7 +391,7 @@ FilePath ICore::resourcePath(const QString &rel)
 }
 
 /*!
-    Returns the absolute path for the relative path \a rel in the users directory that is used for
+    Returns the absolute path in the users directory that is used for
     resources like project templates.
 
     Use this function for finding the place for resources that the user may
@@ -468,7 +416,7 @@ FilePath ICore::userResourcePath(const QString &rel)
 }
 
 /*!
-    Returns a writable path for the relative path \a rel that can be used for persistent cache files.
+    Returns a writable path that can be used for persistent cache files.
 */
 FilePath ICore::cacheResourcePath(const QString &rel)
 {
@@ -477,8 +425,8 @@ FilePath ICore::cacheResourcePath(const QString &rel)
 }
 
 /*!
-    Returns the path, based on the relative path \a rel, to resources written by the installer,
-    for example pre-defined kits and toolchains.
+    Returns the path to resources written by the installer, for example
+    pre-defined kits and toolchains.
 */
 FilePath ICore::installerResourcePath(const QString &rel)
 {
@@ -516,8 +464,8 @@ QString ICore::userPluginPath()
 }
 
 /*!
-    Returns the path, based on the relative path \a rel, to the command line tools that are
-    included in the \QC installation.
+    Returns the path to the command line tools that are included in the \QC
+    installation.
  */
 FilePath ICore::libexecPath(const QString &rel)
 {
@@ -547,31 +495,31 @@ static QString clangIncludePath(const QString &clangVersion)
 /*!
     \internal
 */
-FilePath ICore::clangIncludeDirectory(const QString &clangVersion,
-                                      const FilePath &clangFallbackIncludeDir)
+QString ICore::clangIncludeDirectory(const QString &clangVersion,
+                                     const QString &clangFallbackIncludeDir)
 {
     FilePath dir = libexecPath("clang" + clangIncludePath(clangVersion));
     if (!dir.exists() || !dir.pathAppended("stdint.h").exists())
-        dir = clangFallbackIncludeDir;
-    return dir.canonicalPath();
+        dir = FilePath::fromString(clangFallbackIncludeDir);
+    return dir.canonicalPath().toUserOutput();
 }
 
 /*!
     \internal
 */
-static FilePath clangBinary(const QString &binaryBaseName, const FilePath &clangBinDirectory)
+static QString clangBinary(const QString &binaryBaseName, const QString &clangBinDirectory)
 {
-    FilePath executable =
-        ICore::libexecPath("clang/bin").pathAppended(binaryBaseName).withExecutableSuffix();
+    const QString hostExeSuffix(QTC_HOST_EXE_SUFFIX);
+    FilePath executable = ICore::libexecPath("clang/bin") / binaryBaseName + hostExeSuffix;
     if (!executable.exists())
-        executable = clangBinDirectory.pathAppended(binaryBaseName).withExecutableSuffix();
-    return executable.canonicalPath();
+        executable = FilePath::fromString(clangBinDirectory) / binaryBaseName + hostExeSuffix;
+    return executable.canonicalPath().toUserOutput();
 }
 
 /*!
     \internal
 */
-FilePath ICore::clangExecutable(const FilePath &clangBinDirectory)
+QString ICore::clangExecutable(const QString &clangBinDirectory)
 {
     return clangBinary("clang", clangBinDirectory);
 }
@@ -579,7 +527,7 @@ FilePath ICore::clangExecutable(const FilePath &clangBinDirectory)
 /*!
     \internal
 */
-FilePath ICore::clangdExecutable(const FilePath &clangBinDirectory)
+QString ICore::clangdExecutable(const QString &clangBinDirectory)
 {
     return clangBinary("clangd", clangBinDirectory);
 }
@@ -587,7 +535,7 @@ FilePath ICore::clangdExecutable(const FilePath &clangBinDirectory)
 /*!
     \internal
 */
-FilePath ICore::clangTidyExecutable(const FilePath &clangBinDirectory)
+QString ICore::clangTidyExecutable(const QString &clangBinDirectory)
 {
     return clangBinary("clang-tidy", clangBinDirectory);
 }
@@ -595,7 +543,7 @@ FilePath ICore::clangTidyExecutable(const FilePath &clangBinDirectory)
 /*!
     \internal
 */
-FilePath ICore::clazyStandaloneExecutable(const FilePath &clangBinDirectory)
+QString ICore::clazyStandaloneExecutable(const QString &clangBinDirectory)
 {
     return clangBinary("clazy-standalone", clangBinDirectory);
 }
@@ -829,14 +777,14 @@ void ICore::registerWindow(QWidget *window, const Context &context)
 }
 
 /*!
-    Opens files using \a filePaths and \a flags like it would be
+    Opens files using \a arguments and \a flags like it would be
     done if they were given to \QC on the command line, or
     they were opened via \uicontrol File > \uicontrol Open.
 */
 
-void ICore::openFiles(const FilePaths &filePaths, ICore::OpenFilesFlags flags)
+void ICore::openFiles(const QStringList &arguments, ICore::OpenFilesFlags flags)
 {
-    MainWindow::openFiles(filePaths, flags);
+    MainWindow::openFiles(arguments, flags);
 }
 
 /*!
@@ -967,14 +915,6 @@ void ICore::updateNewItemDialogState()
     wasRunning = isNewItemDialogRunning();
     previousDialog = newItemDialog();
     emit instance()->newItemDialogStateChanged();
-}
-
-/*!
-    \internal
-*/
-void ICore::setNewDialogFactory(const std::function<NewDialog *(QWidget *)> &newFactory)
-{
-    m_newDialogFactory = newFactory;
 }
 
 } // namespace Core

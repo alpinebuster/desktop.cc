@@ -1,5 +1,4 @@
-
-include(../../qtcreatorplugin.pri)
+include(../../mfds_plugin.pri)
 
 SOURCES += welcomeplugin.cpp \
     introductionwidget.cpp

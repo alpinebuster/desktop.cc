@@ -1,31 +1,4 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "winutils.h"
-
-#include "filepath.h"
 #include "qtcassert.h"
 
 #ifdef Q_OS_WIN
@@ -154,16 +127,16 @@ QTCREATOR_UTILS_EXPORT bool is64BitWindowsSystem()
 #endif
 }
 
-QTCREATOR_UTILS_EXPORT bool is64BitWindowsBinary(const FilePath &binaryIn)
+QTCREATOR_UTILS_EXPORT bool is64BitWindowsBinary(const QString &binaryIn)
 {
-       QTC_ASSERT(!binaryIn.isEmpty() && !binaryIn.needsDevice(), return false);
+       QTC_ASSERT(!binaryIn.isEmpty(), return false);
 #ifdef Q_OS_WIN32
 #  ifdef __GNUC__   // MinGW lacking some definitions/winbase.h
 #    define SCS_64BIT_BINARY 6
 #  endif
         bool isAmd64 = false;
         DWORD binaryType = 0;
-        const QString binary = binaryIn.nativePath();
+        const QString binary = QDir::toNativeSeparators(binaryIn);
         bool success = GetBinaryTypeW(reinterpret_cast<const TCHAR*>(binary.utf16()), &binaryType) != 0;
         if (success && binaryType == SCS_64BIT_BINARY)
             isAmd64=true;

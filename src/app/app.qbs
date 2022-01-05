@@ -57,8 +57,8 @@ QtcProduct {
         "../shared/qtsingleapplication/qtlocalpeer.h",
         "../shared/qtsingleapplication/qtlocalpeer.cpp",
         "../shared/qtlockedfile/qtlockedfile.cpp",
-        "../tools/qtcreatorcrashhandler/crashhandlersetup.cpp",
-        "../tools/qtcreatorcrashhandler/crashhandlersetup.h"
+        "./qtcreatorcrashhandler/crashhandlersetup.cpp",
+        "./qtcreatorcrashhandler/crashhandlersetup.h"
     ]
 
     Group {
@@ -69,9 +69,8 @@ QtcProduct {
         cpp.defines: outer.concat(["RC_VERSION=" + qtc.qtcreator_version.replace(/\./g, ",") + ",0",
                                    "RC_VERSION_STRING=" + qtc.qtcreator_display_version,
                                    "RC_COPYRIGHT=2008-" + qtc.qtcreator_copyright_year
-                                   + " The Qt Company Ltd".replace(/ /g, "\\x20"),
-                                   "RC_ICON_PATH=."])
-        files: "qtcreator.rc"
+                                   + " The Qt Company Ltd".replace(/ /g, "\\x20")])
+        files: "mfds.rc"
     }
 
     Group {

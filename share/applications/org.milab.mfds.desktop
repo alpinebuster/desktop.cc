@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Exec=mfds %F
+Name=MFDS
+GenericName=Application for handling cephalometric measurement
+X-KDE-StartupNotify=true
+Icon=mfds-project
+StartupWMClass=mfds
+Terminal=false
+Categories=Cephalometric Measurement;Desktop;Landmarking;
+MimeType= text/x-c++src;text/x-c++hdr;text/x-xsrc;application/x-designer;application/vnd.qt.qmakeprofile;application/vnd.qt.xml.resource;
+

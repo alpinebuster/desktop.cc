@@ -1,36 +1,11 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "editortoolbar.h"
 
 #include <coreplugin/actionmanager/actionmanager.h>
 #include <coreplugin/actionmanager/command.h>
-#include <coreplugin/editormanager/documentmodel.h>
-#include <coreplugin/editormanager/editormanager.h>
-#include <coreplugin/editormanager/editormanager_p.h>
-#include <coreplugin/editormanager/ieditor.h>
+#include <coreplugin/homemanager/documentmodel.h>
+#include <coreplugin/homemanager/homemanager.h>
+#include <coreplugin/homemanager/homemanager_p.h>
+#include <coreplugin/homemanager/ieditor.h>
 #include <coreplugin/fileiconprovider.h>
 #include <coreplugin/icore.h>
 
@@ -94,16 +69,16 @@ EditorToolBarPrivate::EditorToolBarPrivate(QWidget *parent, EditorToolBar *q) :
     m_lockButton(new QToolButton(q)),
     m_dragHandle(new QToolButton(q)),
     m_dragHandleMenu(nullptr),
-    m_goBackAction(new QAction(Utils::Icons::PREV_TOOLBAR.icon(), EditorManager::tr("Go Back"), parent)),
-    m_goForwardAction(new QAction(Utils::Icons::NEXT_TOOLBAR.icon(), EditorManager::tr("Go Forward"), parent)),
+    m_goBackAction(new QAction(Utils::Icons::PREV_TOOLBAR.icon(), HomeManager::tr("Go Back"), parent)),
+    m_goForwardAction(new QAction(Utils::Icons::NEXT_TOOLBAR.icon(), HomeManager::tr("Go Forward"), parent)),
     m_backButton(new QToolButton(q)),
     m_forwardButton(new QToolButton(q)),
     m_splitButton(new QToolButton(q)),
     m_horizontalSplitAction(new QAction(Utils::Icons::SPLIT_HORIZONTAL.icon(),
-                                        EditorManager::tr("Split"), parent)),
+                                        HomeManager::tr("Split"), parent)),
     m_verticalSplitAction(new QAction(Utils::Icons::SPLIT_VERTICAL.icon(),
-                                      EditorManager::tr("Split Side by Side"), parent)),
-    m_splitNewWindowAction(new QAction(EditorManager::tr("Open in New Window"), parent)),
+                                      HomeManager::tr("Split Side by Side"), parent)),
+    m_splitNewWindowAction(new QAction(HomeManager::tr("Open in New Window"), parent)),
     m_closeSplitButton(new QToolButton(q)),
     m_activeToolBar(nullptr),
     m_toolBarPlaceholder(new QWidget(q)),
@@ -257,7 +232,7 @@ void EditorToolBar::setCloseSplitIcon(const QIcon &icon)
 void EditorToolBar::closeEditor()
 {
     if (d->m_isStandalone)
-        EditorManager::slotCloseCurrentEditorOrDocument();
+        HomeManager::slotCloseCurrentEditorOrDocument();
     emit closeClicked();
 }
 
@@ -295,8 +270,8 @@ void EditorToolBar::setToolbarCreationFlags(ToolbarCreationFlags flags)
 {
     d->m_isStandalone = flags & FlagsStandalone;
     if (d->m_isStandalone) {
-        connect(EditorManager::instance(),
-                &EditorManager::currentEditorChanged,
+        connect(HomeManager::instance(),
+                &HomeManager::currentEditorChanged,
                 this,
                 &EditorToolBar::setCurrentEditor);
 
@@ -331,7 +306,7 @@ void EditorToolBar::setCurrentEditor(IEditor *editor)
 
 void EditorToolBar::changeActiveEditor(int row)
 {
-    EditorManager::activateEditorForEntry(DocumentModel::entryAtRow(row));
+    HomeManager::activateEditorForEntry(DocumentModel::entryAtRow(row));
 }
 
 void EditorToolBar::fillListContextMenu(QMenu *menu)
@@ -339,21 +314,21 @@ void EditorToolBar::fillListContextMenu(QMenu *menu)
     if (d->m_menuProvider) {
         d->m_menuProvider(menu);
     } else {
-        IEditor *editor = EditorManager::currentEditor();
+        IEditor *editor = HomeManager::currentEditor();
         DocumentModel::Entry *entry = editor ? DocumentModel::entryForDocument(editor->document())
                                              : nullptr;
-        EditorManager::addSaveAndCloseEditorActions(menu, entry, editor);
+        HomeManager::addSaveAndCloseEditorActions(menu, entry, editor);
         menu->addSeparator();
-        EditorManager::addPinEditorActions(menu, entry);
+        HomeManager::addPinEditorActions(menu, entry);
         menu->addSeparator();
-        EditorManager::addNativeDirAndOpenWithActions(menu, entry);
+        HomeManager::addNativeDirAndOpenWithActions(menu, entry);
     }
 }
 
 void EditorToolBar::makeEditorWritable()
 {
-    if (IDocument *current = EditorManager::currentDocument())
-        Internal::EditorManagerPrivate::makeFileWritable(current);
+    if (IDocument *current = HomeManager::currentDocument())
+        Internal::HomeManagerPrivate::makeFileWritable(current);
 }
 
 void EditorToolBar::setCanGoBack(bool canGoBack)
@@ -368,7 +343,7 @@ void EditorToolBar::setCanGoForward(bool canGoForward)
 
 void EditorToolBar::updateActionShortcuts()
 {
-    d->m_closeEditorButton->setToolTip(ActionManager::command(Constants::CLOSE)->stringWithAppendedShortcut(EditorManager::tr("Close Document")));
+    d->m_closeEditorButton->setToolTip(ActionManager::command(Constants::CLOSE)->stringWithAppendedShortcut(HomeManager::tr("Close Document")));
     d->m_goBackAction->setToolTip(ActionManager::command(Constants::GO_BACK)->action()->toolTip());
     d->m_goForwardAction->setToolTip(ActionManager::command(Constants::GO_FORWARD)->action()->toolTip());
     d->m_closeSplitButton->setToolTip(ActionManager::command(Constants::REMOVE_CURRENT_SPLIT)->stringWithAppendedShortcut(tr("Remove Split")));
@@ -448,7 +423,7 @@ bool EditorToolBar::eventFilter(QObject *obj, QEvent *event)
                 return Utils::StyledBar::eventFilter(obj, event);
             auto drag = new QDrag(this);
             auto data = new Utils::DropMimeData;
-            data->addFile(entry->fileName());
+            data->addFile(entry->fileName().toString());
             drag->setMimeData(data);
             Qt::DropAction action = drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::MoveAction);
             if (action == Qt::MoveAction)

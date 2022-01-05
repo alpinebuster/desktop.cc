@@ -31,7 +31,7 @@
         \li \l{Getting Started}
             \list
                 \li \l{Installation}
-                \li \l{Tutorials}
+                \li \l{Your First UI}
                 \li \l{User Interface}
                     \list
                         \li \l{Selecting Modes}
@@ -59,7 +59,7 @@
                 \li \l{Creating Projects}
                 \li \l{Use Cases}
                 \li \l{Concepts and Terms}
-                \li \l{Examples}
+                \li \l{Examples and Tutorials}
             \endlist
         \li \l{Wireframing}
             \list
@@ -88,10 +88,7 @@
                                 \li \l{Logic Helpers}
                                 \li \l Animations
                                 \li \l{3D Views}
-                                \li \l{Node}
                                 \li \l{Group}
-                                \li \l{Instanced Rendering}
-                                \li \l{Skeletal Animation}
                                 \li \l{3D Models}
                                 \li \l{Materials and Shaders}
                                 \li \l{Textures}
@@ -102,17 +99,6 @@
                                 \li \l{Lights}
                                 \li \l{Cameras}
                                 \li \l{Scene Environment}
-                                \li \l{Morph Target}
-                                \li \l{Repeater3D}
-                                \li \l{Loader3D}
-                                \li \l{Particles}
-                                        \list
-                                            \li \l {Particle System}
-                                            \li \l {Logical Particles}
-                                            \li \l {Particle Emitters}
-                                            \li \l {Particle Affectors}
-                                            \li \l {Particle Directions}
-                                        \endlist
                             \endlist
                         \li \l {Creating Component Instances}
                         \li \l {Creating Custom Components}
@@ -154,29 +140,25 @@
                 \li \l {Asset Creation with Other Tools}
                     \list
                         \li \l{Exporting from Design Tools}
-                        \list
-                            \li \l{Exporting Designs from Adobe Illustrator}
-                            \li \l{Exporting Designs from Adobe Photoshop}
-                                \list
-                                    \li \l{Setting Up Qt Bridge for Adobe Photoshop}
-                                    \li \l{Using Qt Bridge for Adobe Photoshop}
-                                \endlist
-                            \li \l{Exporting Designs from Adobe XD}
-                                \list
-                                    \li \l{Setting Up Qt Bridge for Adobe XD}
-                                    \li \l{Using Qt Bridge for Adobe XD}
-                                \endlist
-                            \li \l{Exporting Designs from Sketch}
-                                \list
-                                    \li \l{Setting Up Qt Bridge for Sketch}
-                                    \li \l{Using Qt Bridge for Sketch}
-                                \endlist
-                            \li \l{Exporting Designs from Figma}
-                                \list
-                                    \li \l{Setting Up Qt Bridge for Figma}
-                                    \li \l{Using Qt Bridge for Figma}
-                                \endlist
-                        \endlist
+                        \li \l{Exporting 2D Assets} (NEW)
+                            \list
+                                \li \l{Exporting Designs from Adobe Illustrator}
+                                \li \l{Exporting Designs from Adobe Photoshop}
+                                    \list
+                                        \li \l{Setting Up Qt Bridge for Adobe Photoshop}
+                                        \li \l{Using Qt Bridge for Adobe Photoshop}
+                                    \endlist
+                                \li \l{Exporting Designs from Sketch}
+                                    \list
+                                        \li \l{Setting Up Qt Bridge for Sketch}
+                                        \li \l{Using Qt Bridge for Sketch}
+                                    \endlist
+                                \li \l{Exporting Designs from Figma}
+                                    \list
+                                        \li \l{Setting Up Qt Bridge for Figma}
+                                        \li \l{Using Qt Bridge for Figma}
+                                    \endlist
+                            \endlist
                         \li \l {Exporting 3D Assets}
                             \list
                                 \li \l{Exporting from Blender}
@@ -205,10 +187,10 @@
                         \li \l{Creating Optimized 3D Scenes}
                     \endlist
             \endlist
-        \li \l{Implementing Applications}
+        \li \l{Implementing Applications} (NEW)
             \list
-                \li \l{Designer-Developer Workflow}
-                \li \l{Coding}{Cross-Platform Development}
+                \li Using Flows in Production (NEW)
+                \li \l{Coding}{Cross-Platform Development} (NEW)
                     \list
                         \li \l{Writing Code}
                             \list
@@ -241,14 +223,18 @@
                     \list
                         \li \l{Debugging Qt Quick Projects}
                         \li \l{Debugging a Qt Quick Example Application}
-                        \li \l{Profiling QML Applications}
+                    \endlist
+                \li \l{Designer-Developer Workflow} (NEW)
+                    \list
+                        \li \l{Reusable Prototypes and Full UI Implementation} (NEW)
+                        \li \l{Optimizing Specification and Implementation} (NEW)
+                        \li \l{Parallel Development} (NEW)
+                        \li \l{One Toolchain} (NEW)
                     \endlist
             \endlist
-        \li \l{Advanced Designer Topics}
+        \li \l{Advanced Topics}{Advanced Designer Topics} (NEW)
             \list
-                \omit
-                \li Extending Component Functionality
-                \endomit
+                \li Extending Component Functionality (NEW)
                 \li \l{UI Files}
                 \li \l{Managing Data Collection}
                     \list
@@ -256,12 +242,11 @@
                         \li \l {Collecting User Feedback}
                         \li \l {Reporting Crashes}
                     \endlist
-                \li \l {Packaging Applications}
+                \li {Packaging Applications}
             \endlist
-        \li \l{Developer Topics}
+        \li \l{Developer Topics} (NEW)
             \list
                 \li \l{Using Git}
-                \li \l{Converting Qt 5 Projects into Qt 6 Projects}
                 \li \l{Converting UI Projects to Applications}
                 \li \l{Using External Tools}
             \endlist

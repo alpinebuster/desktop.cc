@@ -2,11 +2,11 @@
     \"Name\" : \"ProjectExplorer\",
     \"Version\" : \"$$QTCREATOR_VERSION\",
     \"CompatVersion\" : \"$$QTCREATOR_COMPAT_VERSION\",
-    \"Vendor\" : \"The Qt Company Ltd\",
-    \"Copyright\" : \"(C) $$QTCREATOR_COPYRIGHT_YEAR The Qt Company Ltd\",
+    \"Vendor\" : \"MILab\",
+    \"Copyright\" : \"(C) $$QTCREATOR_COPYRIGHT_YEAR MILab\",
     \"License\" : [ \"Commercial Usage\",
                   \"\",
-                  \"Licensees holding valid Qt Commercial licenses may use this plugin in accordance with the Qt Commercial License Agreement provided with the Software or, alternatively, in accordance with the terms contained in a written agreement between you and The Qt Company.\",
+                  \"Licensees holding valid MILab Commercial licenses may use this plugin in accordance with the MILab Commercial License Agreement provided with the Software or, alternatively, in accordance with the terms contained in a written agreement between you and The MILab.\",
                   \"\",
                   \"GNU General Public License Usage\",
                   \"\",
@@ -14,7 +14,7 @@
     ],
     \"Category\" : \"Core\",
     \"Description\" : \"ProjectExplorer framework that can be extended with different kind of project types.\",
-    \"Url\" : \"http://www.qt.io\",
+    \"Url\" : \"https://scumed.machineilab.org/\",
     \"Arguments\" : [
         {
             \"Name\" : \"-customwizard-verbose\",

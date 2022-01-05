@@ -1,8 +1,3 @@
-if (NOT IS_ABSOLUTE ${IDE_LOGO_PATH})
-  set(IDE_LOGO_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${IDE_LOGO_PATH}")
-endif()
-configure_file(core.qrc.cmakein core_cmake.qrc)
-
 add_qtc_plugin(Core
   DEPENDS Qt5::PrintSupport Qt5::Qml Qt5::Sql Qt5::Gui Qt5::GuiPrivate
   PUBLIC_DEPENDS Aggregation ExtensionSystem Utils app_version
@@ -15,7 +10,7 @@ add_qtc_plugin(Core
     actionmanager/commandsfile.cpp actionmanager/commandsfile.h
     basefilewizard.cpp basefilewizard.h
     basefilewizardfactory.cpp basefilewizardfactory.h
-    ${CMAKE_CURRENT_BINARY_DIR}/core_cmake.qrc
+    core.qrc
     core_global.h
     coreconstants.h
     coreicons.cpp coreicons.h
@@ -28,7 +23,6 @@ add_qtc_plugin(Core
     dialogs/filepropertiesdialog.cpp dialogs/filepropertiesdialog.h dialogs/filepropertiesdialog.ui
     dialogs/ioptionspage.cpp dialogs/ioptionspage.h
     dialogs/newdialog.cpp dialogs/newdialog.h dialogs/newdialog.ui
-    dialogs/newdialogwidget.cpp dialogs/newdialogwidget.h
     dialogs/openwithdialog.cpp dialogs/openwithdialog.h dialogs/openwithdialog.ui
     dialogs/promptoverwritedialog.cpp dialogs/promptoverwritedialog.h
     dialogs/readonlyfilesdialog.cpp dialogs/readonlyfilesdialog.h dialogs/readonlyfilesdialog.ui
@@ -83,8 +77,6 @@ add_qtc_plugin(Core
     find/searchresultwindow.cpp find/searchresultwindow.h
     find/textfindconstants.h
     findplaceholder.cpp findplaceholder.h
-    foldernavigationwidget.cpp
-    foldernavigationwidget.h
     generalsettings.cpp generalsettings.h generalsettings.ui
     generatedfile.cpp generatedfile.h
     helpitem.cpp helpitem.h
@@ -143,6 +135,7 @@ add_qtc_plugin(Core
     progressmanager/progressbar.cpp progressmanager/progressbar.h
     progressmanager/progressmanager.cpp progressmanager/progressmanager.h progressmanager/progressmanager_p.h
     progressmanager/progressview.cpp progressmanager/progressview.h
+    reaper.cpp reaper.h reaper_p.h
     rightpane.cpp rightpane.h
     settingsdatabase.cpp settingsdatabase.h
     shellcommand.cpp shellcommand.h
@@ -199,7 +192,7 @@ if ((NOT WIN32) AND (NOT APPLE))
   # install logo
   foreach(size 16 24 32 48 64 128 256 512)
     install(
-      FILES ${IDE_LOGO_PATH}/images/logo/${size}/QtProject-qtcreator.png
+      FILES images/logo/${size}/QtProject-qtcreator.png
       DESTINATION share/icons/hicolor/${size}x${size}/apps
     )
   endforeach()

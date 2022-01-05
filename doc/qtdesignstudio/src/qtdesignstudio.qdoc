@@ -36,9 +36,9 @@
     and dynamic behavior. You can test, preview, and fine-tune your designs to
     pixel-perfection live on the desktop or target device.
 
-    View \l{All Topics}{all topics} or select a topic from below.
-
     \table
+        \row
+            \li {4,1} \b {\l{All Topics}}
         \row
             \li \inlineimage front-gs.png
             \li \inlineimage front-ui.png
@@ -48,12 +48,12 @@
         \li \b {\l{Getting Started}}
             \list
                 \li \l{Installation}
-                \li \l{Tutorials}
+                \li \l{Your First UI}
                 \li \l{User Interface}
                 \li \l{Creating Projects}
                 \li \l{Use Cases}
                 \li \l{Concepts and Terms}
-                \li \l{Examples}
+                \li \l{Examples and Tutorials}
             \endlist
         \li \b {\l{Wireframing}}
             \list
@@ -85,22 +85,23 @@
             \li \inlineimage front-projects.png
             \li \inlineimage front-help.png
         \row
-        \li \b {\l{Implementing Applications}}
+        \li \b {\l{Implementing Applications}} (NEW)
             \list
-                \li \l{Designer-Developer Workflow}
-                \li \l{Coding}{Cross-Platform Development}
+                \li Using Flows in Production (NEW)
+                \li \l{Coding}{Cross-Platform Development} (NEW)
                 \li \l{Debugging and Profiling}
+                \li \l{Designer-Developer Workflow} (NEW)
             \endlist
-        \li \b {\l{Advanced Designer Topics}}
+        \li \b {\l{Advanced Topics}{Advanced Designer Topics}} (NEW)
             \list
+                \li Extending Component Functionality (NEW)
                 \li \l{UI Files}
                 \li \l {Managing Data Collection}
-                \li \l{Packaging Applications}
             \endlist
-        \li \b {\l{Developer Topics}}
+        \li \b {\l{Developer Topics}} (NEW)
             \list
+                \li \l{Packaging Applications}
                 \li \l{Using Git}
-                \li \l{Converting Qt 5 Projects into Qt 6 Projects}
                 \li \l{Converting UI Projects to Applications}
                 \li \l{Using External Tools}
             \endlist

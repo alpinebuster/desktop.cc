@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "consoleprocess.h"
 
 #include <utils/algorithm.h>
@@ -83,7 +58,7 @@ public:
 
     static QString m_defaultConsoleProcess;
     ConsoleProcess::Mode m_mode = ConsoleProcess::Run;
-    FilePath m_workingDir;
+    QString m_workingDir;
     Environment m_environment;
     qint64 m_appPid = 0;
     int m_appCode;
@@ -99,7 +74,7 @@ public:
     QSettings *m_settings = nullptr;
 
     // Used on Unix only
-    QtcProcess m_process;
+    QProcess m_process;
     bool m_stubConnected = false;
     QTimer *m_stubConnectTimer = nullptr;
     QByteArray m_stubServerDir;
@@ -396,7 +371,9 @@ bool ConsoleProcess::start()
         pargs = d->m_commandLine.arguments();
     } else {
         ProcessArgs outArgs;
-        ProcessArgs::prepareCommand(d->m_commandLine, &pcmd, &outArgs,
+        ProcessArgs::prepareCommand(d->m_commandLine.executable().toString(),
+                                    d->m_commandLine.arguments(),
+                                    &pcmd, &outArgs, OsTypeWindows,
                                     &d->m_environment, &d->m_workingDir);
         pargs = outArgs.toWindowsArgs();
     }
@@ -460,7 +437,7 @@ bool ConsoleProcess::start()
     d->m_pid = new PROCESS_INFORMATION;
     ZeroMemory(d->m_pid, sizeof(PROCESS_INFORMATION));
 
-    QString workDir = workingDirectory().toUserOutput();
+    QString workDir = QDir::toNativeSeparators(workingDirectory());
     if (!workDir.isEmpty() && !workDir.endsWith(QLatin1Char('\\')))
         workDir.append(QLatin1Char('\\'));
 
@@ -571,7 +548,7 @@ bool ConsoleProcess::start()
     }
 
     const QString stubPath = QCoreApplication::applicationDirPath()
-            + QLatin1String("/" RELATIVE_LIBEXEC_PATH "/qtcreator_process_stub");
+            + QLatin1String("/" QTC_REL_TOOLS_PATH "/qtcreator_process_stub");
 
     QStringList allArgs = terminalArgs.toUnixArgs();
     if (d->m_runAsRoot)
@@ -581,7 +558,7 @@ bool ConsoleProcess::start()
             << modeOption(d->m_mode)
             << d->m_stubServer.fullServerName()
             << msgPromptToClose()
-            << workingDirectory().path()
+            << workingDirectory()
             << (d->m_tempFile ? d->m_tempFile->fileName() : QString())
             << QString::number(getpid())
             << pcmd
@@ -590,9 +567,8 @@ bool ConsoleProcess::start()
     if (terminal.needsQuotes)
         allArgs = QStringList { ProcessArgs::joinArgs(allArgs) };
 
-    d->m_process.setEnvironment(d->m_environment);
-    d->m_process.setCommand({FilePath::fromString(terminal.command), allArgs});
-    d->m_process.start();
+    d->m_process.setEnvironment(env);
+    d->m_process.start(terminal.command, allArgs);
     if (!d->m_process.waitForStarted()) {
         stubServerShutdown();
         emitError(QProcess::UnknownError, tr("Cannot start the terminal emulator \"%1\", change the setting in the "
@@ -957,12 +933,12 @@ QProcess::ExitStatus ConsoleProcess::exitStatus() const
     return d->m_appStatus;
 }
 
-void ConsoleProcess::setWorkingDirectory(const FilePath &dir)
+void ConsoleProcess::setWorkingDirectory(const QString &dir)
 {
     d->m_workingDir = dir;
 }
 
-FilePath ConsoleProcess::workingDirectory() const
+QString ConsoleProcess::workingDirectory() const
 {
     return d->m_workingDir;
 }
@@ -1024,9 +1000,9 @@ QString ConsoleProcess::msgUnexpectedOutput(const QByteArray &what)
     return tr("Unexpected output from helper program (%1).").arg(QString::fromLatin1(what));
 }
 
-QString ConsoleProcess::msgCannotChangeToWorkDir(const FilePath &dir, const QString &why)
+QString ConsoleProcess::msgCannotChangeToWorkDir(const QString & dir, const QString &why)
 {
-    return tr("Cannot change to working directory \"%1\": %2").arg(dir.toString(), why);
+    return tr("Cannot change to working directory \"%1\": %2").arg(dir, why);
 }
 
 QString ConsoleProcess::msgCannotExecute(const QString & p, const QString &why)

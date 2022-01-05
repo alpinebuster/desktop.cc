@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "manhattanstyle.h"
 
 #include "styleanimator.h"
@@ -37,7 +12,6 @@
 #include <utils/qtcassert.h>
 
 #include <QApplication>
-#include <QCheckBox>
 #include <QComboBox>
 #include <QDockWidget>
 #include <QFormLayout>
@@ -48,7 +22,6 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPixmap>
-#include <QSpinBox>
 #include <QStatusBar>
 #include <QStyleFactory>
 #include <QStyleOption>
@@ -73,23 +46,14 @@ bool styleEnabled(const QWidget *widget)
     return true;
 }
 
-static bool isInUnstyledDialogOrPopup(const QWidget *widget)
-{
-    // Do not style contents of dialogs or popups without "panelwidget" property
-    const QWidget *window = widget->window();
-    if (window->property("panelwidget").toBool())
-        return false;
-    const Qt::WindowType windowType = window->windowType();
-    return (windowType == Qt::Dialog || windowType == Qt::Popup);
-}
-
 // Consider making this a QStyle state
 bool panelWidget(const QWidget *widget)
 {
     if (!widget)
         return false;
 
-    if (isInUnstyledDialogOrPopup(widget))
+    // Do not style dialogs or explicitly ignored widgets
+    if ((widget->window()->windowFlags() & Qt::WindowType_Mask) == Qt::Dialog)
         return false;
 
     if (qobject_cast<const FancyMainWindow *>(widget))
@@ -116,7 +80,8 @@ bool lightColored(const QWidget *widget)
     if (!widget)
         return false;
 
-    if (isInUnstyledDialogOrPopup(widget))
+    // Don't style dialogs or explicitly ignored widgets
+    if ((widget->window()->windowFlags() & Qt::WindowType_Mask) == Qt::Dialog)
         return false;
 
     const QWidget *p = widget;
@@ -297,8 +262,7 @@ void ManhattanStyle::polish(QWidget *widget)
         if (qobject_cast<QToolButton*>(widget) || qobject_cast<QLineEdit*>(widget)) {
             widget->setAttribute(Qt::WA_Hover);
             widget->setMaximumHeight(height - 2);
-        } else if (qobject_cast<QLabel*>(widget) || qobject_cast<QSpinBox*>(widget)
-                   || qobject_cast<QCheckBox*>(widget)) {
+        } else if (qobject_cast<QLabel*>(widget)) {
             widget->setPalette(panelPalette(widget->palette(), lightColored(widget)));
         } else if (widget->property("panelwidget_singlerow").toBool()) {
             widget->setFixedHeight(height);

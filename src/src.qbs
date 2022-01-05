@@ -34,7 +34,6 @@ Project {
             qbsBaseDir + "/src/app/apps.qbs",
             qbsBaseDir + "/src/shared/bundledqt/bundledqt.qbs",
             qbsBaseDir + "/src/shared/json/json.qbs",
-            qbsBaseDir + "/src/shared/variant/variant.qbs",
         ]
     }
 }

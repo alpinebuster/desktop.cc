@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Brian McGillion and Hugues Delorme
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "shellcommand.h"
 
 #include "environment.h"
@@ -69,16 +44,16 @@ class ShellCommandPrivate
 {
 public:
     struct Job {
-        explicit Job(const FilePath &wd, const CommandLine &command, int t,
+        explicit Job(const QString &wd, const CommandLine &command, int t,
                      const ExitCodeInterpreter &interpreter);
 
-        FilePath workingDirectory;
+        QString workingDirectory;
         CommandLine command;
         ExitCodeInterpreter exitCodeInterpreter;
         int timeoutS;
     };
 
-    ShellCommandPrivate(const FilePath &defaultWorkingDirectory, const Environment &environment)
+    ShellCommandPrivate(const QString &defaultWorkingDirectory, const Environment &environment)
         : m_defaultWorkingDirectory(defaultWorkingDirectory),
           m_environment(environment)
     {}
@@ -86,7 +61,7 @@ public:
     ~ShellCommandPrivate() { delete m_progressParser; }
 
     QString m_displayName;
-    const FilePath m_defaultWorkingDirectory;
+    const QString m_defaultWorkingDirectory;
     const Environment m_environment;
     QVariant m_cookie;
     QTextCodec *m_codec = nullptr;
@@ -105,7 +80,7 @@ public:
     bool m_disableUnixTerminal = false;
 };
 
-ShellCommandPrivate::Job::Job(const FilePath &wd, const CommandLine &command,
+ShellCommandPrivate::Job::Job(const QString &wd, const CommandLine &command,
                               int t, const ExitCodeInterpreter &interpreter) :
     workingDirectory(wd),
     command(command),
@@ -119,7 +94,8 @@ ShellCommandPrivate::Job::Job(const FilePath &wd, const CommandLine &command,
 
 } // namespace Internal
 
-ShellCommand::ShellCommand(const FilePath &workingDirectory, const Environment &environment) :
+ShellCommand::ShellCommand(const QString &workingDirectory,
+                           const Environment &environment) :
     d(new Internal::ShellCommandPrivate(workingDirectory, environment))
 {
     connect(&d->m_watcher, &QFutureWatcher<void>::canceled, this, &ShellCommand::cancel);
@@ -155,7 +131,7 @@ void ShellCommand::setDisplayName(const QString &name)
     d->m_displayName = name;
 }
 
-const FilePath &ShellCommand::defaultWorkingDirectory() const
+const QString &ShellCommand::defaultWorkingDirectory() const
 {
     return d->m_defaultWorkingDirectory;
 }
@@ -186,15 +162,13 @@ void ShellCommand::addFlags(unsigned f)
 }
 
 void ShellCommand::addJob(const CommandLine &command,
-                          const FilePath &workingDirectory,
-                          const ExitCodeInterpreter &interpreter)
+                          const QString &workingDirectory, const ExitCodeInterpreter &interpreter)
 {
     addJob(command, defaultTimeoutS(), workingDirectory, interpreter);
 }
 
 void ShellCommand::addJob(const CommandLine &command, int timeoutS,
-                          const FilePath &workingDirectory,
-                          const ExitCodeInterpreter &interpreter)
+                          const QString &workingDirectory, const ExitCodeInterpreter &interpreter)
 {
     d->m_jobs.push_back(Internal::ShellCommandPrivate::Job(workDirectory(workingDirectory), command,
                                                            timeoutS, interpreter));
@@ -238,7 +212,7 @@ int ShellCommand::timeoutS() const
     });
 }
 
-FilePath ShellCommand::workDirectory(const FilePath &wd) const
+QString ShellCommand::workDirectory(const QString &wd) const
 {
     if (!wd.isEmpty())
         return wd;
@@ -309,9 +283,9 @@ void ShellCommand::run(QFutureInterface<void> &future)
 
 void ShellCommand::runCommand(QtcProcess &proc,
                               const CommandLine &command,
-                              const FilePath &workingDirectory)
+                              const QString &workingDirectory)
 {
-    const FilePath dir = workDirectory(workingDirectory);
+    const QString dir = workDirectory(workingDirectory);
 
     if (command.executable().isEmpty()) {
         proc.setResult(QtcProcess::StartFailed);
@@ -341,12 +315,13 @@ void ShellCommand::runCommand(QtcProcess &proc,
     }
 }
 
-void ShellCommand::runFullySynchronous(QtcProcess &process, const FilePath &workingDirectory)
+void ShellCommand::runFullySynchronous(QtcProcess &process,
+                                       const QString &workingDirectory)
 {
     // Set up process
     if (d->m_disableUnixTerminal)
         process.setDisableUnixTerminal();
-    const FilePath dir = workDirectory(workingDirectory);
+    const QString dir = workDirectory(workingDirectory);
     if (!dir.isEmpty())
         process.setWorkingDirectory(dir);
     process.setEnvironment(processEnvironment());
@@ -372,7 +347,8 @@ void ShellCommand::runFullySynchronous(QtcProcess &process, const FilePath &work
     }
 }
 
-void ShellCommand::runSynchronous(QtcProcess &process, const FilePath &workingDirectory)
+void ShellCommand::runSynchronous(QtcProcess &process,
+                                  const QString &workingDirectory)
 {
     connect(this, &ShellCommand::terminate, &process, &QtcProcess::stopProcess);
     process.setEnvironment(processEnvironment());
@@ -380,7 +356,7 @@ void ShellCommand::runSynchronous(QtcProcess &process, const FilePath &workingDi
         process.setCodec(d->m_codec);
     if (d->m_disableUnixTerminal)
         process.setDisableUnixTerminal();
-    const FilePath dir = workDirectory(workingDirectory);
+    const QString dir = workDirectory(workingDirectory);
     if (!dir.isEmpty())
         process.setWorkingDirectory(dir);
     // connect stderr to the output window if desired
@@ -391,7 +367,7 @@ void ShellCommand::runSynchronous(QtcProcess &process, const FilePath &workingDi
             if (d->m_progressParser)
                 d->m_progressParser->parseProgress(text);
             if (!(d->m_flags & SuppressStdErr))
-                emit appendError(text);
+                appendError(text);
             if (d->m_progressiveOutput)
                 emit stdErrText(text);
         });
@@ -403,7 +379,7 @@ void ShellCommand::runSynchronous(QtcProcess &process, const FilePath &workingDi
             if (d->m_progressParser)
                 d->m_progressParser->parseProgress(text);
             if (d->m_flags & ShowStdOut)
-                emit append(text);
+                append(text);
             if (d->m_progressiveOutput) {
                 emit stdOutText(text);
                 d->m_hadOutput = true;

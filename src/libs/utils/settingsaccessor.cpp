@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2017 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "settingsaccessor.h"
 
 #include "algorithm.h"
@@ -218,10 +193,12 @@ QVariantMap SettingsAccessor::prepareToWriteSettings(const QVariantMap &data) co
 
 FilePaths BackUpStrategy::readFileCandidates(const FilePath &baseFileName) const
 {
-    const QStringList filter(baseFileName.fileName() + '*');
-    const FilePath baseFileDir = baseFileName.parentDir();
 
-    return baseFileDir.dirEntries(filter, QDir::Files | QDir::Hidden | QDir::System);
+    const QFileInfo pfi = baseFileName.toFileInfo();
+    const QStringList filter(pfi.fileName() + '*');
+    const QFileInfoList list = QDir(pfi.dir()).entryInfoList(filter, QDir::Files | QDir::Hidden | QDir::System);
+
+    return Utils::transform(list, [](const QFileInfo &fi) { return FilePath::fromString(fi.absoluteFilePath()); });
 }
 
 int BackUpStrategy::compare(const SettingsAccessor::RestoreData &data1,
@@ -327,8 +304,10 @@ void BackingUpSettingsAccessor::backupFile(const FilePath &path, const QVariantM
         return;
 
     // Do we need to do a backup?
-    if (optional<FilePath> backupFileName = m_strategy->backupName(oldSettings.data, path, data))
-        path.copyFile(backupFileName.value());
+    const QString origName = path.toString();
+    optional<FilePath> backupFileName = m_strategy->backupName(oldSettings.data, path, data);
+    if (backupFileName)
+        QFile::copy(origName, backupFileName.value().toString());
 }
 
 // --------------------------------------------------------------------

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "outputformatter.h"
 
 #include "algorithm.h"
@@ -136,10 +111,8 @@ bool OutputLineParser::demoteErrorsToWarnings() const
 
 FilePath OutputLineParser::absoluteFilePath(const FilePath &filePath) const
 {
-    if (filePath.isEmpty())
+    if (filePath.isEmpty() || filePath.toFileInfo().isAbsolute())
         return filePath;
-    if (filePath.toFileInfo().isAbsolute())
-        return filePath.cleanPath();
     FilePaths candidates;
     for (const FilePath &dir : searchDirectories()) {
         FilePath candidate = dir.pathAppended(filePath.toString());
@@ -219,7 +192,6 @@ public:
     bool boldFontEnabled = true;
     bool prependCarriageReturn = false;
     bool prependLineFeed = false;
-    bool forwardStdOutToStdError = false;
 };
 
 OutputFormatter::OutputFormatter() : d(new Private) { }
@@ -302,8 +274,7 @@ void OutputFormatter::doAppendMessage(const QString &text, OutputFormat format)
     // then our formatting should reflect that redirection as well, i.e. print in red
     // even if the nominal format is stdout.
     if (!involvedParsers.isEmpty()) {
-        const OutputFormat formatForParser = res.formatOverride
-                ? *res.formatOverride : outputTypeForParser(involvedParsers.last(), format);
+        const OutputFormat formatForParser = outputTypeForParser(involvedParsers.last(), format);
         if (formatForParser != format && cleanLine == text && formattedText.length() == 1) {
             charFmt = charFormat(formatForParser);
             formattedText.first().format = charFmt;
@@ -325,7 +296,7 @@ void OutputFormatter::doAppendMessage(const QString &text, OutputFormat format)
         if (d->postPrintAction)
             d->postPrintAction(p);
         else
-            p->runPostPrintActions(plainTextEdit());
+            p->runPostPrintActions();
     }
 }
 
@@ -578,11 +549,6 @@ void OutputFormatter::setBoldFontEnabled(bool enabled)
     d->formats[ErrorMessageFormat].setFontWeight(fontWeight);
 }
 
-void OutputFormatter::setForwardStdOutToStdError(bool enabled)
-{
-    d->forwardStdOutToStdError = enabled;
-}
-
 void OutputFormatter::flush()
 {
     if (!d->incompleteLine.first.isEmpty())
@@ -592,7 +558,7 @@ void OutputFormatter::flush()
     for (OutputLineParser * const p : qAsConst(d->lineParsers))
         p->flush();
     if (d->nextParser)
-        d->nextParser->runPostPrintActions(plainTextEdit());
+        d->nextParser->runPostPrintActions();
 }
 
 bool OutputFormatter::hasFatalErrors() const
@@ -617,7 +583,7 @@ void OutputFormatter::dropSearchDir(const FilePath &dir)
 OutputFormat OutputFormatter::outputTypeForParser(const OutputLineParser *parser,
                                                   OutputFormat type) const
 {
-    if (type == StdOutFormat && (parser->needsRedirection() || d->forwardStdOutToStdError))
+    if (type == StdOutFormat && parser->needsRedirection())
         return StdErrFormat;
     return type;
 }

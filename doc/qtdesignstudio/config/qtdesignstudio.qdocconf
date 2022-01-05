@@ -69,8 +69,7 @@ excludedirs  += ../../qtcreator/examples/accelbubble \
 
 exampledirs = ../examples/ \
               ../../qtcreator/examples
-examples.fileextensions += *.qml *.ts *.qm
-examples.imageextensions = "*.svg *.png *.jpg *.gif"
+examples.fileextensions += *.qml *.svg *.ts *.qm
 
 depends +=    qtwidgets \
               qtcore \

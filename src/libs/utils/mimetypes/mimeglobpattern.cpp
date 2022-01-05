@@ -1,42 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of the QtCore module of the Qt Toolkit.
-**
-** $QT_BEGIN_LICENSE:LGPL$
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU Lesser General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU Lesser
-** General Public License version 3 as published by the Free Software
-** Foundation and appearing in the file LICENSE.LGPL3 included in the
-** packaging of this file. Please review the following information to
-** ensure the GNU Lesser General Public License version 3 requirements
-** will be met: https://www.gnu.org/licenses/lgpl-3.0.html.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 2.0 or (at your option) the GNU General
-** Public license version 3 or any later version approved by the KDE Free
-** Qt Foundation. The licenses are as published by the Free Software
-** Foundation and appearing in the file LICENSE.GPL2 and LICENSE.GPL3
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-2.0.html and
-** https://www.gnu.org/licenses/gpl-3.0.html.
-**
-** $QT_END_LICENSE$
-**
-****************************************************************************/
-
 #include "mimeglobpattern_p.h"
 
 #include <QRegularExpression>
@@ -83,39 +44,6 @@ void MimeGlobMatchResult::addMatch(const QString &mimeType, int weight, const QS
     }
 }
 
-MimeGlobPattern::PatternType MimeGlobPattern::detectPatternType(const QString &pattern) const
-{
-    const int patternLength = pattern.length();
-    if (!patternLength)
-        return OtherPattern;
-
-    const bool starCount = pattern.count(QLatin1Char('*')) == 1;
-    const bool hasSquareBracket = pattern.indexOf(QLatin1Char('[')) != -1;
-    const bool hasQuestionMark = pattern.indexOf(QLatin1Char('?')) != -1;
-
-    if (!hasSquareBracket && !hasQuestionMark) {
-        if (starCount == 1) {
-            // Patterns like "*~", "*.extension"
-            if (pattern.at(0) == QLatin1Char('*'))
-                return SuffixPattern;
-            // Patterns like "README*" (well this is currently the only one like that...)
-            if (pattern.at(patternLength - 1) == QLatin1Char('*'))
-                return PrefixPattern;
-        }
-        // Names without any wildcards like "README"
-        if (starCount == 0)
-            return LiteralPattern;
-    }
-
-    if (pattern == QLatin1String("[0-9][0-9][0-9].vdr"))
-        return VdrPattern;
-
-    if (pattern == QLatin1String("*.anim[1-9j]"))
-        return AnimPattern;
-
-    return OtherPattern;
-}
-
 /*!
     \internal
     \class MimeGlobPattern
@@ -125,63 +53,55 @@ MimeGlobPattern::PatternType MimeGlobPattern::detectPatternType(const QString &p
     \sa MimeType, MimeDatabase, MimeMagicRuleMatcher, MimeMagicRule
 */
 
-bool MimeGlobPattern::matchFileName(const QString &inputFileName) const
+bool MimeGlobPattern::matchFileName(const QString &inputFilename) const
 {
     // "Applications MUST match globs case-insensitively, except when the case-sensitive
     // attribute is set to true."
     // The constructor takes care of putting case-insensitive patterns in lowercase.
-    const QString fileName = m_caseSensitivity == Qt::CaseInsensitive
-            ? inputFileName.toLower() : inputFileName;
+    const QString filename = m_caseSensitivity == Qt::CaseInsensitive ? inputFilename.toLower() : inputFilename;
 
-    const int patternLength = m_pattern.length();
-    if (!patternLength)
+    const int pattern_len = m_pattern.length();
+    if (!pattern_len)
         return false;
-    const int fileNameLength = fileName.length();
+    const int len = filename.length();
 
-    switch (m_patternType) {
-    case SuffixPattern: {
-        if (fileNameLength + 1 < patternLength)
-            return false;
+    const int starCount = m_pattern.count(QLatin1Char('*'));
 
-        const QChar *c1 = m_pattern.unicode() + patternLength - 1;
-        const QChar *c2 = fileName.unicode() + fileNameLength - 1;
+    // Patterns like "*~", "*.extension"
+    if (m_pattern[0] == QLatin1Char('*') && m_pattern.indexOf(QLatin1Char('[')) == -1 && starCount == 1)
+    {
+        if (len + 1 < pattern_len) return false;
+
+        const QChar *c1 = m_pattern.unicode() + pattern_len - 1;
+        const QChar *c2 = filename.unicode() + len - 1;
         int cnt = 1;
-        while (cnt < patternLength && *c1-- == *c2--)
+        while (cnt < pattern_len && *c1-- == *c2--)
             ++cnt;
-        return cnt == patternLength;
+        return cnt == pattern_len;
     }
-    case PrefixPattern: {
-        if (fileNameLength + 1 < patternLength)
-            return false;
+
+    // Patterns like "README*" (well this is currently the only one like that...)
+    if (starCount == 1 && m_pattern.at(pattern_len - 1) == QLatin1Char('*')) {
+        if (len + 1 < pattern_len) return false;
+        if (m_pattern.at(0) == QLatin1Char('*'))
+            return filename.indexOf(QStringView(m_pattern).mid(1, pattern_len - 2)) != -1;
 
         const QChar *c1 = m_pattern.unicode();
-        const QChar *c2 = fileName.unicode();
+        const QChar *c2 = filename.unicode();
         int cnt = 1;
-        while (cnt < patternLength && *c1++ == *c2++)
+        while (cnt < pattern_len && *c1++ == *c2++)
            ++cnt;
-        return cnt == patternLength;
+        return cnt == pattern_len;
     }
-    case LiteralPattern:
-        return (m_pattern == fileName);
-    case VdrPattern: // "[0-9][0-9][0-9].vdr" case
-        return fileNameLength == 7
-                && fileName.at(0).isDigit() && fileName.at(1).isDigit() && fileName.at(2).isDigit()
-                && QStringView{fileName}.mid(3, 4) == QLatin1String(".vdr");
-    case AnimPattern: { // "*.anim[1-9j]" case
-        if (fileNameLength < 6)
-            return false;
-        const QChar lastChar = fileName.at(fileNameLength - 1);
-        const bool lastCharOK = (lastChar.isDigit() && lastChar != QLatin1Char('0'))
-                              || lastChar == QLatin1Char('j');
-        return lastCharOK && QStringView{fileName}.mid(fileNameLength - 6, 5) == QLatin1String(".anim");
-    }
-    case OtherPattern:
-        // Other fallback patterns: slow but correct method
-        const QRegularExpression rx(QRegularExpression::anchoredPattern(
+
+    // Names without any wildcards like "README"
+    if (m_pattern.indexOf(QLatin1Char('[')) == -1 && starCount == 0 && m_pattern.indexOf(QLatin1Char('?')))
+        return (m_pattern == filename);
+
+    // Other (quite rare) patterns, like "*.anim[1-9j]": use slow but correct method
+    const QRegularExpression rx(QRegularExpression::anchoredPattern(
                                     QRegularExpression::wildcardToRegularExpression(m_pattern)));
-        return rx.match(fileName).hasMatch();
-    }
-    return false;
+    return rx.match(filename).hasMatch();
 }
 
 static bool isFastPattern(const QString &pattern)

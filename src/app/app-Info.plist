@@ -6,7 +6,7 @@
 	<array>
 		<dict>
 			<key>UTTypeIconFile</key>
-			<string>qtcreator-project.icns</string>
+			<string>mfds.icns</string>
 			<key>UTTypeDescription</key>
 			<string>Qt Creator Makefile Based Project File</string>
 			<key>UTTypeConformsTo</key>
@@ -14,7 +14,7 @@
 				<string>public.plain-text</string>
 			</array>
 			<key>UTTypeIdentifier</key>
-			<string>org.qt-project.qtcreator-genericproject</string>
+			<string>org.milab.qtcreator-genericproject</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -25,7 +25,7 @@
 		</dict>
 		<dict>
 			<key>UTTypeIconFile</key>
-			<string>qtcreator-project.icns</string>
+			<string>mfds.icns</string>
 			<key>UTTypeDescription</key>
 			<string>Quick Project File</string>
 			<key>UTTypeConformsTo</key>
@@ -34,7 +34,7 @@
 				<string>org.qt-project.qml</string>
 			</array>
 			<key>UTTypeIdentifier</key>
-			<string>org.qt-project.qtcreator-qmlproject</string>
+			<string>org.milab.mfds-qmlproject</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -48,15 +48,15 @@
 	<array>
 		<dict>
 			<key>UTTypeIconFile</key>
-			<string>qtcreator-project.icns</string>
+			<string>mfds-project.icns</string>
 			<key>UTTypeDescription</key>
-			<string>Qt Project File</string>
+			<string>MFDS Project File</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.source-code</string>
 			</array>
 			<key>UTTypeIdentifier</key>
-			<string>org.qt-project.pro</string>
+			<string>org.milab.pro</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
@@ -237,9 +237,9 @@
 		</dict>
 	</array>
 	<key>NSHumanReadableCopyright</key>
-	<string>(C) ${IDE_COPYRIGHT_YEAR} The Qt Company Ltd</string>
+	<string>(C) ${IDE_COPYRIGHT_YEAR} MILab</string>
 	<key>CFBundleIconFile</key>
-	<string>qtcreator</string>
+	<string>mfds</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleSignature</key>

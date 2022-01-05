@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<instructionals module="Qt">
+    <tutorials>
+        <tutorial imageUrl=":support/images/icons/tutorialicon.png"
+                    difficulty=""
+                    projectPath="/example1"
+                    name="Help: How to perform X-ray cephalometric measurement?">
+          <description><![CDATA[Import your lateral slices, perform AI landmark detection, and automatically get the measurement analysis you want.]]></description>
+          <tags>Cephalometric measurement,AI,Landmark detection</tags>
+        </tutorial>
+
+        <tutorial imageUrl=":support/images/icons/videotutorialicon.png"
+                    difficulty=""
+                    projectPath="/example2"
+                    name="Help: How to perform colored frontal and lateral cephalometric analysis?">
+          <description><![CDATA[Creating a digital project cephalometric analysis with MFDS.]]></description>
+          <tags>MFDS,Colored,Cephalometric analysis</tags>
+        </tutorial>
+
+        <tutorial imageUrl=":support/images/icons/eventicon.png"
+                    difficulty=""
+                    projectPath=""
+                    name="Video: Introduction to MFDS"
+                    isVideo="true"
+                    videoUrl="https://scumed.machineilab.org"
+                    videoLength="1:06:32">
+          <description><![CDATA[Getting started with using MFDS for cephalometric measurement.]]></description>
+          <tags>MFDS,Video tutorial,2021</tags>
+        </tutorial>
+    </tutorials>
+</instructionals>

@@ -1,170 +1,139 @@
-/****************************************************************************
-**
-** Copyright (C) 2021 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "launcherpackets.h"
-#include "processutils.h"
 
-#include <QDeadlineTimer>
+#include <QtCore/qobject.h>
+
 #include <QHash>
 #include <QMutex>
-#include <QObject>
+#include <QMutexLocker>
 #include <QProcess>
 #include <QWaitCondition>
 
-#include <atomic>
-#include <memory>
 #include <vector>
+#include <atomic>
 
 QT_BEGIN_NAMESPACE
 class QLocalSocket;
 QT_END_NAMESPACE
 
 namespace Utils {
+class LauncherInterface;
+
 namespace Internal {
 
 class LauncherInterfacePrivate;
-class LauncherHandle;
-class LauncherSignal;
-class ErrorSignal;
-class StartedSignal;
-class ReadyReadSignal;
-class FinishedSignal;
+class CallerHandle;
 
-// All the methods and data fields in this class are called / accessed from the caller's thread.
-// Exceptions are explicitly marked.
-class CallerHandle : public QObject
+// Moved to the launcher thread, returned to caller's thread.
+// It's assumed that this object will be alive at least
+// as long as the corresponding QtcProcess is alive.
+
+// We should have LauncherSocket::registerHandle() and LauncherSocket::unregisterHandle()
+// methods.
+
+class LauncherHandle : public QObject
 {
     Q_OBJECT
 public:
-    enum class SignalType {
-        NoSignal,
-        Error,
-        Started,
-        ReadyRead,
-        Finished
-    };
-    Q_ENUM(SignalType)
-    CallerHandle(QObject *parent, quintptr token, ProcessMode mode)
-        : QObject(parent), m_token(token), m_processMode(mode) {}
-    ~CallerHandle() override;
+    // called from main thread
+    bool waitForStarted(int msecs) // TODO: we might already be in finished state when calling this method - fix it!
+    { return waitForState(msecs, WaitingForState::Started, QProcess::Running); }
+    bool waitForFinished(int msecs)
+    { return waitForState(msecs, WaitingForState::Finished, QProcess::NotRunning); }
 
-    LauncherHandle *launcherHandle() const { return m_launcherHandle; }
-    void setLauncherHandle(LauncherHandle *handle) { QMutexLocker locker(&m_mutex); m_launcherHandle = handle; }
-
-    bool waitForStarted(int msecs);
-    bool waitForReadyRead(int msces);
-    bool waitForFinished(int msecs);
-
-    // Returns the list of flushed signals.
-    QList<SignalType> flush();
-    QList<SignalType> flushFor(SignalType signalType);
-    bool shouldFlushFor(SignalType signalType) const;
-    // Called from launcher's thread exclusively.
-    void appendSignal(LauncherSignal *launcherSignal);
-
-    // Called from caller's or launcher's thread.
-    QProcess::ProcessState state() const;
+    QProcess::ProcessState state() const
+    { QMutexLocker locker(&m_mutex); return m_processState; }
     void cancel();
+    bool isCanceled() const { return m_canceled; }
 
-    QByteArray readAllStandardOutput();
-    QByteArray readAllStandardError();
+    QByteArray readAllStandardOutput()
+    { QMutexLocker locker(&m_mutex); return readAndClear(m_stdout); }
+    QByteArray readAllStandardError()
+    { QMutexLocker locker(&m_mutex); return readAndClear(m_stderr); }
 
-    qint64 processId() const;
-    int exitCode() const;
-    QString errorString() const;
-    void setErrorString(const QString &str);
+    qint64 processId() const { QMutexLocker locker(&m_mutex); return m_processId; }
+    QString errorString() const { QMutexLocker locker(&m_mutex); return m_errorString; }
+    void setErrorString(const QString &str) { QMutexLocker locker(&m_mutex); m_errorString = str; }
 
-    void start(const QString &program, const QStringList &arguments, const QByteArray &writeData);
-    // Called from caller's or launcher's thread.
-    void startIfNeeded();
+    // Called from other thread. Create a temp object receiver which lives in caller's thread.
+    // Add started and finished signals to it and post a flush to it.
+    // When we are in waitForState() which is called from the same thread,
+    // we may flush the signal queue and emit these signals immediately.
+    // Who should remove this object? deleteLater()?
+    void start(const QString &program, const QStringList &arguments, QIODevice::OpenMode mode);
 
-    qint64 write(const QByteArray &data);
-
-    QProcess::ProcessError error() const;
-    // Called from caller's or launcher's thread.
-    QString program() const;
-    // Called from caller's or launcher's thread.
-    QStringList arguments() const;
-    void setStandardInputFile(const QString &fileName);
-    void setProcessChannelMode(QProcess::ProcessChannelMode mode);
-    void setProcessEnvironment(const QProcessEnvironment &environment);
-    void setWorkingDirectory(const QString &dir);
-    QProcess::ExitStatus exitStatus() const;
-
-    void setBelowNormalPriority();
-    void setNativeArguments(const QString &arguments);
-    void setLowPriority();
-    void setUnixTerminalDisabled();
-
+    QProcess::ProcessError error() const { QMutexLocker locker(&m_mutex); return m_error; }
+    QString program() const { QMutexLocker locker(&m_mutex); return m_command; }
+    void setProcessChannelMode(QProcess::ProcessChannelMode mode) {
+        QMutexLocker locker(&m_mutex);
+        if (mode != QProcess::SeparateChannels && mode != QProcess::MergedChannels) {
+            qWarning("setProcessChannelMode: The only supported modes are SeparateChannels and MergedChannels.");
+            return;
+        }
+        m_channelMode = mode;
+    }
+    void setProcessEnvironment(const QProcessEnvironment &environment)
+    { QMutexLocker locker(&m_mutex); m_environment = environment; }
+    void setWorkingDirectory(const QString &dir) { QMutexLocker locker(&m_mutex); m_workingDirectory = dir; }
+    QProcess::ExitStatus exitStatus() const { QMutexLocker locker(&m_mutex); return m_exitStatus; }
 signals:
     void errorOccurred(QProcess::ProcessError error);
     void started();
     void finished(int exitCode, QProcess::ExitStatus status);
     void readyReadStandardOutput();
     void readyReadStandardError();
-
 private:
-    bool waitForSignal(int msecs, CallerHandle::SignalType newSignal);
-    bool canWaitFor(SignalType newSignal) const; // TODO: employ me before calling waitForSignal()
+    enum class WaitingForState {
+        Idle,
+        Started,
+        ReadyRead,
+        Finished
+    };
+    // called from other thread
+    bool waitForState(int msecs, WaitingForState newState, QProcess::ProcessState targetState);
 
-    // Called from caller's or launcher's thread. Call me with mutex locked.
     void doStart();
-    // Called from caller's or launcher's thread.
-    void sendPacket(const Internal::LauncherPacket &packet);
-    // Called from caller's or launcher's thread.
-    bool isCalledFromCallersThread() const;
-    // Called from caller's or launcher's thread. Call me with mutex locked.
-    bool isCalledFromLaunchersThread() const;
 
-    QByteArray readAndClear(QByteArray &data) const
+    void slotStarted();
+    void slotReadyRead();
+    void slotFinished();
+
+    // called from this thread
+    LauncherHandle(quintptr token) : m_token(token) {}
+    void createCallerHandle();
+    void destroyCallerHandle();
+
+    void flushCaller();
+
+    void handlePacket(LauncherPacketType type, const QByteArray &payload);
+    void handleErrorPacket(const QByteArray &packetData);
+    void handleStartedPacket(const QByteArray &packetData);
+    void handleFinishedPacket(const QByteArray &packetData);
+
+    void handleSocketReady();
+    void handleSocketError(const QString &message);
+
+    void stateReached(WaitingForState wakeUpState, QProcess::ProcessState newState);
+
+    QByteArray readAndClear(QByteArray &data)
     {
         const QByteArray tmp = data;
         data.clear();
         return tmp;
     }
 
-    void handleError(const ErrorSignal *launcherSignal);
-    void handleStarted(const StartedSignal *launcherSignal);
-    void handleReadyRead(const ReadyReadSignal *launcherSignal);
-    void handleFinished(const FinishedSignal *launcherSignal);
-
-    // Lives in launcher's thread. Modified from caller's thread.
-    LauncherHandle *m_launcherHandle = nullptr;
+    void sendPacket(const Internal::LauncherPacket &packet);
 
     mutable QMutex m_mutex;
-    // Accessed from caller's and launcher's thread
-    QList<LauncherSignal *> m_signals;
-
+    QWaitCondition m_waitCondition;
     const quintptr m_token;
-    const ProcessMode m_processMode;
+    WaitingForState m_waitingFor = WaitingForState::Idle;
 
-    // Modified from caller's thread, read from launcher's thread
-    std::atomic<QProcess::ProcessState> m_processState = QProcess::NotRunning;
-    std::unique_ptr<StartProcessPacket> m_startPacket;
+    QProcess::ProcessState m_processState = QProcess::NotRunning;
+    std::atomic_bool m_canceled = false;
+    std::atomic_bool m_failed = false;
+    std::atomic_bool m_finished = false;
     int m_processId = 0;
     int m_exitCode = 0;
     QProcess::ExitStatus m_exitStatus = QProcess::ExitStatus::NormalExit;
@@ -172,76 +141,18 @@ private:
     QByteArray m_stderr;
     QString m_errorString;
     QProcess::ProcessError m_error = QProcess::UnknownError;
+    bool m_socketError = false;
 
     QString m_command;
     QStringList m_arguments;
     QProcessEnvironment m_environment;
     QString m_workingDirectory;
-    QByteArray m_writeData;
+    QIODevice::OpenMode m_openMode = QIODevice::ReadWrite;
     QProcess::ProcessChannelMode m_channelMode = QProcess::SeparateChannels;
-    QString m_standardInputFile;
 
-    bool m_belowNormalPriority = false;
-    QString m_nativeArguments;
-    bool m_lowPriority = false;
-    bool m_unixTerminalDisabled = false;
-};
-
-// Moved to the launcher thread, returned to caller's thread.
-// It's assumed that this object will be alive at least
-// as long as the corresponding QtcProcess is alive.
-
-class LauncherHandle : public QObject
-{
-    Q_OBJECT
-public:
-    // Called from caller's thread, moved to launcher's thread afterwards.
-    LauncherHandle(quintptr token, ProcessMode) : m_token(token) {}
-    // Called from caller's thread exclusively.
-    bool waitForSignal(int msecs, CallerHandle::SignalType newSignal);
-    CallerHandle *callerHandle() const { return m_callerHandle; }
-    void setCallerHandle(CallerHandle *handle) { QMutexLocker locker(&m_mutex); m_callerHandle = handle; }
-    // Called from caller's thread exclusively.
-    void setCanceled() { m_awaitingShouldContinue = false; }
-
-    // Called from launcher's thread exclusively.
-    void handleSocketReady();
-    void handleSocketError(const QString &message);
-    void handlePacket(LauncherPacketType type, const QByteArray &payload);
-
-    // Called from caller's thread exclusively.
-    bool isSocketError() const { return m_socketError; }
-
-private:
-    // Called from caller's thread exclusively.
-    bool doWaitForSignal(QDeadlineTimer deadline, CallerHandle::SignalType newSignal);
-    // Called from launcher's thread exclusively. Call me with mutex locked.
-    void wakeUpIfWaitingFor(CallerHandle::SignalType newSignal);
-
-    // Called from launcher's thread exclusively. Call me with mutex locked.
-    void flushCaller();
-    // Called from launcher's thread exclusively.
-    void handleErrorPacket(const QByteArray &packetData);
-    void handleStartedPacket(const QByteArray &packetData);
-    void handleReadyReadStandardOutput(const QByteArray &packetData);
-    void handleReadyReadStandardError(const QByteArray &packetData);
-    void handleFinishedPacket(const QByteArray &packetData);
-
-    // Called from caller's or launcher's thread.
-    bool isCalledFromLaunchersThread() const;
-    bool isCalledFromCallersThread() const;
-
-    // Lives in caller's thread. Modified only in caller's thread. TODO: check usages - all should be with mutex
     CallerHandle *m_callerHandle = nullptr;
 
-    // Modified only in caller's thread.
-    bool m_awaitingShouldContinue = false;
-    mutable QMutex m_mutex;
-    QWaitCondition m_waitCondition;
-    const quintptr m_token;
-    std::atomic_bool m_socketError = false;
-    // Modified only in caller's thread.
-    CallerHandle::SignalType m_waitingFor = CallerHandle::SignalType::NoSignal;
+    friend class LauncherSocket;
 };
 
 class LauncherSocket : public QObject
@@ -249,12 +160,10 @@ class LauncherSocket : public QObject
     Q_OBJECT
     friend class LauncherInterfacePrivate;
 public:
-    // Called from caller's or launcher's thread.
     bool isReady() const { return m_socket.load(); }
     void sendData(const QByteArray &data);
 
-    // Called from caller's thread exclusively.
-    CallerHandle *registerHandle(QObject *parent, quintptr token, ProcessMode mode);
+    LauncherHandle *registerHandle(quintptr token);
     void unregisterHandle(quintptr token);
 
 signals:
@@ -262,27 +171,18 @@ signals:
     void errorOccurred(const QString &error);
 
 private:
-    // Called from caller's thread, moved to launcher's thread.
     LauncherSocket(QObject *parent = nullptr);
-    // Called from launcher's thread exclusively.
-    ~LauncherSocket() override;
 
-    // Called from launcher's thread exclusively.
     LauncherHandle *handleForToken(quintptr token) const;
 
-    // Called from launcher's thread exclusively.
     void setSocket(QLocalSocket *socket);
     void shutdown();
 
-    // Called from launcher's thread exclusively.
     void handleSocketError();
     void handleSocketDataAvailable();
     void handleSocketDisconnected();
     void handleError(const QString &error);
     void handleRequests();
-
-    // Called from caller's or launcher's thread.
-    bool isCalledFromLaunchersThread() const;
 
     std::atomic<QLocalSocket *> m_socket{nullptr};
     PacketParser m_packetParser;

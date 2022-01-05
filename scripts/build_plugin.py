@@ -56,8 +56,6 @@ def get_arguments():
                         action='append', dest='config_args', default=[])
     parser.add_argument('--with-docs', help='Build and install documentation.',
                         action='store_true', default=False)
-    parser.add_argument('--add-sanitize-flags', help="Sets flags for sanitizer compilation flags used in Debug builds",
-                        action='append', dest='sanitize_flags', default=[] )
     parser.add_argument('--deploy', help='Installs the "Dependencies" component of the plugin.',
                         action='store_true', default=False)
     parser.add_argument('--build-type', help='Build type to pass to CMake (defaults to RelWithDebInfo)',
@@ -112,10 +110,6 @@ def build(args, paths):
         with open(os.path.join(paths.result, args.name + '.7z.git_sha'), 'w') as f:
             f.write(ide_revision)
 
-    if not args.build_type.lower() == 'release' and args.sanitize_flags:
-        cmake_args += ['-DWITH_SANITIZE=ON',
-                       '-DSANITIZE_FLAGS=' + ",".join(args.sanitize_flags)]
-
     cmake_args += args.config_args
     common.check_print_call(cmake_args + [paths.src], paths.build)
     build_args = ['cmake', '--build', '.']
@@ -154,8 +148,7 @@ def package(args, paths):
         common.check_print_call(['7z', 'a', '-mmt2',
                                  os.path.join(paths.result, args.name + '_dev.7z'), '*'],
                                 paths.dev_install)
-    # check for existence - the DebugInfo install target doesn't work for telemetry plugin
-    if args.with_debug_info and os.path.exists(paths.debug_install):
+    if args.with_debug_info:
         common.check_print_call(['7z', 'a', '-mmt2',
                                  os.path.join(paths.result, args.name + '-debug.7z'), '*'],
                                 paths.debug_install)

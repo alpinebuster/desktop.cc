@@ -9,12 +9,9 @@ add_subdirectory(share)
 add_subdirectory(shared)
 add_subdirectory(app)
 add_subdirectory(plugins)
-add_subdirectory(tools)
 
 install(
   FILES
-    ${PROJECT_SOURCE_DIR}/HACKING
-    ${PROJECT_SOURCE_DIR}/LICENSE.GPL3-EXCEPT
     ${PROJECT_SOURCE_DIR}/README.md
   DESTINATION ${IDE_DATA_PATH}
   COMPONENT Devel EXCLUDE_FROM_ALL
@@ -51,9 +48,8 @@ endif()
 
 include(CMakeFindDependencyMacro)
 find_dependency(Qt5 ${IDE_QT_VERSION_MIN}
-  COMPONENTS Concurrent Core Gui Widgets Core5Compat Network PrintSupport Qml Sql REQUIRED
+  COMPONENTS Concurrent Core Gui Widgets Core5Compat Network PrintSupport Qml Quick QuickWidgets Sql REQUIRED
 )
-find_dependency(Qt5 COMPONENTS Quick QuickWidgets QUIET)
 
 if (NOT IDE_VERSION)
   include(\${CMAKE_CURRENT_LIST_DIR}/QtCreatorIDEBranding.cmake)

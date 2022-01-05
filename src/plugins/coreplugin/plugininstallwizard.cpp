@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2020 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "plugininstallwizard.h"
 
 #include "coreplugin.h"
@@ -420,16 +395,16 @@ private:
     Data *m_data = nullptr;
 };
 
-static std::function<void(FilePath)> postCopyOperation()
+static std::function<void(QFileInfo)> postCopyOperation()
 {
-    return [](const FilePath &filePath) {
+    return [](const QFileInfo &fi) {
         if (!HostOsInfo::isMacHost())
             return;
         // On macOS, downloaded files get a quarantine flag, remove it, otherwise it is a hassle
         // to get it loaded as a plugin in Qt Creator.
         QtcProcess xattr;
         xattr.setTimeoutS(1);
-        xattr.setCommand({"/usr/bin/xattr", {"-d", "com.apple.quarantine", filePath.absoluteFilePath().toString()}});
+        xattr.setCommand({"/usr/bin/xattr", {"-d", "com.apple.quarantine", fi.absoluteFilePath()}});
         xattr.runBlocking();
     };
 }
@@ -437,7 +412,7 @@ static std::function<void(FilePath)> postCopyOperation()
 static bool copyPluginFile(const FilePath &src, const FilePath &dest)
 {
     const FilePath destFile = dest.pathAppended(src.fileName());
-    if (destFile.exists()) {
+    if (QFile::exists(destFile.toString())) {
         QMessageBox box(QMessageBox::Question,
                         PluginInstallWizard::tr("Overwrite File"),
                         PluginInstallWizard::tr("The file \"%1\" exists. Overwrite?")
@@ -450,17 +425,17 @@ static bool copyPluginFile(const FilePath &src, const FilePath &dest)
         box.exec();
         if (box.clickedButton() != acceptButton)
             return false;
-        destFile.removeFile();
+        QFile::remove(destFile.toString());
     }
-    dest.parentDir().ensureWritableDir();
-    if (!src.copyFile(destFile)) {
+    QDir(dest.toString()).mkpath(".");
+    if (!QFile::copy(src.toString(), destFile.toString())) {
         QMessageBox::warning(ICore::dialogParent(),
                              PluginInstallWizard::tr("Failed to Write File"),
                              PluginInstallWizard::tr("Failed to write file \"%1\".")
                                  .arg(destFile.toUserOutput()));
         return false;
     }
-    postCopyOperation()(destFile);
+    postCopyOperation()(destFile.toFileInfo());
     return true;
 }
 

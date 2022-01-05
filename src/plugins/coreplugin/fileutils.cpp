@@ -1,43 +1,15 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "fileutils.h"
 
 #include <coreplugin/coreconstants.h>
 #include <coreplugin/documentmanager.h>
-#include <coreplugin/foldernavigationwidget.h>
 #include <coreplugin/icore.h>
-#include <coreplugin/iversioncontrol.h>
-#include <coreplugin/messagemanager.h>
-#include <coreplugin/navigationwidget.h>
-#include <coreplugin/vcsmanager.h>
-#include <utils/commandline.h>
+//#include <coreplugin/iversioncontrol.h>
+//#include <coreplugin/messagemanager.h>
+//#include <coreplugin/vcsmanager.h>
 #include <utils/consoleprocess.h>
 #include <utils/environment.h>
 #include <utils/hostosinfo.h>
-#include <utils/qtcprocess.h>
+#include <utils/commandline.h>
 #include <utils/textfileformat.h>
 #include <utils/unixutils.h>
 
@@ -73,9 +45,9 @@ static void showGraphicalShellError(QWidget *parent, const QString &app, const Q
         ICore::showOptionsDialog(Constants::SETTINGS_ID_INTERFACE, parent);
 }
 
-void FileUtils::showInGraphicalShell(QWidget *parent, const FilePath &pathIn)
+void FileUtils::showInGraphicalShell(QWidget *parent, const QString &pathIn)
 {
-    const QFileInfo fileInfo = pathIn.toFileInfo();
+    const QFileInfo fileInfo(pathIn);
     // Mac, Windows support folder or file.
     if (HostOsInfo::isWindowsHost()) {
         const FilePath explorer = Environment::systemEnvironment().searchInPath(QLatin1String("explorer.exe"));
@@ -88,23 +60,20 @@ void FileUtils::showInGraphicalShell(QWidget *parent, const FilePath &pathIn)
             return;
         }
         QStringList param;
-        if (!pathIn.isDir())
+        if (!fileInfo.isDir())
             param += QLatin1String("/select,");
         param += QDir::toNativeSeparators(fileInfo.canonicalFilePath());
-        QtcProcess::startDetached({explorer, param});
+        QProcess::startDetached(explorer.toString(), param);
     } else if (HostOsInfo::isMacHost()) {
         QStringList scriptArgs;
         scriptArgs << QLatin1String("-e")
                    << QString::fromLatin1("tell application \"Finder\" to reveal POSIX file \"%1\"")
                                          .arg(fileInfo.canonicalFilePath());
-        QtcProcess osascriptProcess;
-        osascriptProcess.setCommand({"/usr/bin/osascript", scriptArgs});
-        osascriptProcess.runBlocking();
+        QProcess::execute(QLatin1String("/usr/bin/osascript"), scriptArgs);
         scriptArgs.clear();
         scriptArgs << QLatin1String("-e")
                    << QLatin1String("tell application \"Finder\" to activate");
-        osascriptProcess.setCommand({"/usr/bin/osascript", scriptArgs});
-        osascriptProcess.runBlocking();
+        QProcess::execute(QLatin1String("/usr/bin/osascript"), scriptArgs);
     } else {
         // we cannot select a file here, because no file browser really supports it...
         const QString folder = fileInfo.isDir() ? fileInfo.absoluteFilePath() : fileInfo.filePath();
@@ -130,23 +99,14 @@ void FileUtils::showInGraphicalShell(QWidget *parent, const FilePath &pathIn)
     }
 }
 
-void FileUtils::showInFileSystemView(const FilePath &path)
-{
-    QWidget *widget
-        = NavigationWidget::activateSubWidget(FolderNavigationWidgetFactory::instance()->id(),
-                                              Side::Left);
-    if (auto *navWidget = qobject_cast<FolderNavigationWidget *>(widget))
-        navWidget->syncWithFilePath(path);
-}
-
-void FileUtils::openTerminal(const FilePath &path)
+void FileUtils::openTerminal(const QString &path)
 {
     openTerminal(path, Environment::systemEnvironment());
 }
 
-void FileUtils::openTerminal(const FilePath &path, const Environment &env)
+void FileUtils::openTerminal(const QString &path, const Environment &env)
 {
-    const QFileInfo fileInfo = path.toFileInfo();
+    const QFileInfo fileInfo(path);
     const QString pwd = QDir::toNativeSeparators(fileInfo.isDir() ?
                                                  fileInfo.absoluteFilePath() :
                                                  fileInfo.absolutePath());
@@ -156,11 +116,6 @@ void FileUtils::openTerminal(const FilePath &path, const Environment &env)
 QString FileUtils::msgFindInDirectory()
 {
     return QApplication::translate("Core::Internal", "Find in This Directory...");
-}
-
-QString FileUtils::msgFileSystemAction()
-{
-    return QApplication::translate("Core::Internal", "Show in File System View");
 }
 
 QString FileUtils::msgGraphicalShellAction()
@@ -188,10 +143,15 @@ QString FileUtils::msgTerminalWithAction()
                         "Opens a submenu for choosing an environment, such as \"Run Environment\"");
 }
 
+void FileUtils::removeFile(const QString &filePath, bool deleteFromFS)
+{
+    removeFiles({FilePath::fromString(filePath)}, deleteFromFS);
+}
+
 void FileUtils::removeFiles(const FilePaths &filePaths, bool deleteFromFS)
 {
     // remove from version control
-    VcsManager::promptToDelete(filePaths);
+//    VcsManager::promptToDelete(filePaths);
 
     if (!deleteFromFS)
         return;
@@ -202,9 +162,10 @@ void FileUtils::removeFiles(const FilePaths &filePaths, bool deleteFromFS)
         if (!file.exists()) // could have been deleted by vc
             continue;
         if (!file.remove()) {
-            MessageManager::writeDisrupting(
-                QCoreApplication::translate("Core::Internal", "Failed to remove file \"%1\".")
-                    .arg(fp.toUserOutput()));
+            // TODO
+//            MessageManager::writeDisrupting(
+//                QCoreApplication::translate("Core::Internal", "Failed to remove file \"%1\".")
+//                    .arg(fp.toUserOutput()));
         }
     }
 }
@@ -216,13 +177,13 @@ bool FileUtils::renameFile(const FilePath &orgFilePath, const FilePath &newFileP
         return false;
 
     FilePath dir = orgFilePath.absolutePath();
-    IVersionControl *vc = VcsManager::findVersionControlForDirectory(dir);
+//    IVersionControl *vc = VcsManager::findVersionControlForDirectory(dir.toString());
 
     bool result = false;
-    if (vc && vc->supportsOperation(IVersionControl::MoveOperation))
-        result = vc->vcsMove(orgFilePath, newFilePath);
+//    if (vc && vc->supportsOperation(IVersionControl::MoveOperation))
+//        result = vc->vcsMove(orgFilePath.toString(), newFilePath.toString());
     if (!result) // The moving via vcs failed or the vcs does not support moving, fall back
-        result = orgFilePath.renameFile(newFilePath);
+        result = Utils::FileUtils::renameFile(orgFilePath, newFilePath);
     if (result) {
         // yeah we moved, tell the filemanager about it
         DocumentManager::renamedFile(orgFilePath, newFilePath);
@@ -232,10 +193,10 @@ bool FileUtils::renameFile(const FilePath &orgFilePath, const FilePath &newFileP
         bool headerUpdateSuccess = updateHeaderFileGuardAfterRename(newFilePath.toString(),
                                                                     orgFilePath.baseName());
         if (!headerUpdateSuccess) {
-            Core::MessageManager::writeDisrupting(
-                QCoreApplication::translate("Core::FileUtils",
-                                            "Failed to rename the include guard in file \"%1\".")
-                    .arg(newFilePath.toUserOutput()));
+//            Core::MessageManager::writeDisrupting(
+//                QCoreApplication::translate("Core::FileUtils",
+//                                            "Failed to rename the include guard in file \"%1\".")
+//                    .arg(newFilePath.toUserOutput()));
         }
     }
 

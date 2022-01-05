@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include <coreplugin/core_global.h>
@@ -31,16 +6,12 @@
 #include <QIcon>
 #include <QObject>
 #include <QString>
-#include <QUrl>
 
 #include <functional>
 
 QT_FORWARD_DECLARE_CLASS(QAction)
 
-namespace Utils {
-class FilePath;
-class Wizard;
-} // Utils
+namespace Utils { class Wizard; }
 
 namespace Core {
 
@@ -64,7 +35,7 @@ public:
     Utils::Id id() const { return m_id; }
     WizardKind kind() const { return m_supportedProjectTypes.isEmpty() ? FileWizard : ProjectWizard; }
     QIcon icon() const { return m_icon; }
-    QString fontIconName() const { return m_fontIconName; }
+    QString iconText() const { return m_iconText; }
     QString description() const { return m_description; }
     QString displayName() const { return m_displayName; }
     QString category() const { return m_category; }
@@ -72,14 +43,12 @@ public:
     QString descriptionImage() const { return m_descriptionImage; }
     QSet<Utils::Id> requiredFeatures() const { return m_requiredFeatures; }
     WizardFlags flags() const { return m_flags; }
-    QUrl detailsPageQmlPath() const { return m_detailsPageQmlPath; }
-
     QSet<Utils::Id> supportedProjectTypes() const { return m_supportedProjectTypes; }
 
     void setId(const Utils::Id id) { m_id = id; }
     void setSupportedProjectTypes(const QSet<Utils::Id> &projectTypes) { m_supportedProjectTypes = projectTypes; }
-    void setIcon(const QIcon &icon, const QString &iconText = {});
-    void setFontIconName(const QString &code) { m_fontIconName = code; }
+    void setIcon(const QIcon &icon) { m_icon = icon; }
+    void setIconText(const QString &iconText) { m_iconText = iconText; }
     void setDescription(const QString &description) { m_description = description; }
     void setDisplayName(const QString &displayName) { m_displayName = displayName; }
     void setCategory(const QString &category) { m_category = category; }
@@ -88,13 +57,12 @@ public:
     void setRequiredFeatures(const QSet<Utils::Id> &featureSet) { m_requiredFeatures = featureSet; }
     void addRequiredFeature(const Utils::Id &feature) { m_requiredFeatures |= feature; }
     void setFlags(WizardFlags flags) { m_flags = flags; }
-    void setDetailsPageQmlPath(const QString &filePath);
 
-    Utils::FilePath runPath(const Utils::FilePath &defaultPath) const;
+    QString runPath(const QString &defaultPath) const;
 
     // Does bookkeeping and the calls runWizardImpl. Please implement that.
-    Utils::Wizard *runWizard(const Utils::FilePath &path, QWidget *parent, Utils::Id platform,
-                             const QVariantMap &variables, bool showWizard = true);
+    Utils::Wizard *runWizard(const QString &path, QWidget *parent, Utils::Id platform,
+                             const QVariantMap &variables);
 
     virtual bool isAvailable(Utils::Id platformId) const;
     QSet<Utils::Id> supportedPlatforms() const;
@@ -114,20 +82,15 @@ public:
 
     static void requestNewItemDialog(const QString &title,
                                      const QList<IWizardFactory *> &factories,
-                                     const Utils::FilePath &defaultLocation,
+                                     const QString &defaultLocation,
                                      const QVariantMap &extraVariables);
-
-    static QIcon themedIcon(const Utils::FilePath &iconMaskPath);
 
 protected:
     static QSet<Utils::Id> pluginFeatures();
     static QSet<Utils::Id> availableFeatures(Utils::Id platformId);
 
-    virtual Utils::Wizard *runWizardImpl(const Utils::FilePath &path,
-                                         QWidget *parent,
-                                         Utils::Id platform,
-                                         const QVariantMap &variables,
-                                         bool showWizard = true) = 0;
+    virtual Utils::Wizard *runWizardImpl(const QString &path, QWidget *parent, Utils::Id platform,
+                                         const QVariantMap &variables) = 0;
 
 private:
     static void initialize();
@@ -137,13 +100,12 @@ private:
 
     QAction *m_action = nullptr;
     QIcon m_icon;
-    QString m_fontIconName;
+    QString m_iconText;
     QString m_description;
     QString m_displayName;
     QString m_category;
     QString m_displayCategory;
     QString m_descriptionImage;
-    QUrl m_detailsPageQmlPath;
     QSet<Utils::Id> m_requiredFeatures;
     QSet<Utils::Id> m_supportedProjectTypes;
     WizardFlags m_flags;

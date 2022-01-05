@@ -1,36 +1,9 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "core_global.h"
 #include "generatedfile.h"
 
 #include <coreplugin/iwizardfactory.h>
-
-#include <utils/filepath.h>
 
 #include <QList>
 #include <QVariantMap>
@@ -56,7 +29,7 @@ public:
     };
     Q_DECLARE_FLAGS(DialogParameterFlags, DialogParameterEnum)
 
-    explicit WizardDialogParameters(const Utils::FilePath &defaultPath, Utils::Id platform,
+    explicit WizardDialogParameters(const QString &defaultPath, Utils::Id platform,
                                     const QSet<Utils::Id> &requiredFeatures, DialogParameterFlags flags,
                                     const QVariantMap &extraValues)
         : m_defaultPath(defaultPath),
@@ -66,14 +39,23 @@ public:
           m_extraValues(extraValues)
     {}
 
-    Utils::FilePath defaultPath() const { return m_defaultPath; }
-    Utils::Id selectedPlatform() const { return m_selectedPlatform; }
-    QSet<Utils::Id> requiredFeatures() const { return m_requiredFeatures; }
-    DialogParameterFlags flags() const { return m_parameterFlags; }
-    QVariantMap extraValues() const { return m_extraValues; }
+    QString defaultPath() const
+    { return m_defaultPath; }
+
+    Utils::Id selectedPlatform() const
+    { return m_selectedPlatform; }
+
+    QSet<Utils::Id> requiredFeatures() const
+    { return m_requiredFeatures; }
+
+    DialogParameterFlags flags() const
+    { return m_parameterFlags; }
+
+    QVariantMap extraValues() const
+    { return m_extraValues; }
 
 private:
-    Utils::FilePath m_defaultPath;
+    QString m_defaultPath;
     Utils::Id m_selectedPlatform;
     QSet<Utils::Id> m_requiredFeatures;
     DialogParameterFlags m_parameterFlags;
@@ -87,7 +69,7 @@ class CORE_EXPORT BaseFileWizardFactory : public IWizardFactory
     friend class BaseFileWizard;
 
 public:
-    static Utils::FilePath buildFileName(const Utils::FilePath &path, const QString &baseName, const QString &extension);
+    static QString buildFileName(const QString &path, const QString &baseName, const QString &extension);
 
 protected:
     virtual BaseFileWizard *create(QWidget *parent, const WizardDialogParameters &parameters) const = 0;
@@ -107,8 +89,9 @@ protected:
     static bool postGenerateOpenEditors(const GeneratedFiles &l, QString *errorMessage = nullptr);
 
 private:
-    Utils::Wizard *runWizardImpl(const Utils::FilePath &path, QWidget *parent, Utils::Id platform,
-                                 const QVariantMap &extraValues, bool showWizard = true) final;
+    // IWizard
+    Utils::Wizard *runWizardImpl(const QString &path, QWidget *parent, Utils::Id platform,
+                                 const QVariantMap &extraValues) override;
 };
 
 } // namespace Core

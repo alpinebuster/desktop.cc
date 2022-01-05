@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "fileiconprovider.h"
 
 #include <utils/fileutils.h>
@@ -140,26 +115,12 @@ QFileIconProvider *iconProvider()
     return instance();
 }
 
-static const QIcon &unknownFileIcon()
-{
-    static const QIcon icon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
-    return icon;
-}
-
-static const QIcon &dirIcon()
-{
-    static const QIcon icon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
-    return icon;
-}
-
 QIcon FileIconProviderImplementation::icon(const FilePath &filePath) const
 {
     if (debug)
         qDebug() << "FileIconProvider::icon" << filePath.absoluteFilePath();
-    bool isDir = filePath.isDir();
-    if (filePath.needsDevice())
-        return isDir ? dirIcon() : unknownFileIcon();
     // Check for cached overlay icons by file suffix.
+    bool isDir = filePath.isDir();
     const QString filename = !isDir ? filePath.fileName() : QString();
     if (!filename.isEmpty()) {
         const Utils::optional<QIcon> icon = getIcon(m_filenameCache, filename);
@@ -175,18 +136,19 @@ QIcon FileIconProviderImplementation::icon(const FilePath &filePath) const
 
     // Get icon from OS (and cache it based on suffix!)
     QIcon icon;
-    if (HostOsInfo::isWindowsHost() || HostOsInfo::isMacHost())
+    if (HostOsInfo::isWindowsHost() || HostOsInfo::isMacHost()) {
         icon = QFileIconProvider::icon(filePath.toFileInfo());
-    else // File icons are unknown on linux systems.
-        icon = isDir ? QFileIconProvider::icon(filePath.toFileInfo()) : unknownFileIcon();
-
+    } else { // File icons are unknown on linux systems.
+        static const QIcon unknownFileIcon(QApplication::style()->standardIcon(QStyle::SP_FileIcon));
+        icon = isDir ? QFileIconProvider::icon(filePath.toFileInfo()) : unknownFileIcon;
+    }
     if (!isDir && !suffix.isEmpty())
         m_suffixCache.insert(suffix, icon);
     return icon;
 }
 
 /*!
-  Returns the icon associated with the file suffix in \a filePath. If there is none,
+  Returns the icon associated with the file suffix in \a info. If there is none,
   the default icon of the operating system is returned.
   */
 

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2021 The Qt Company Ltd.
+** Copyright (C) 2020 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the examples of the Qt Design Studio.
@@ -48,7 +48,7 @@
 **
 ****************************************************************************/
 
-import QtQuick
+import QtQuick 2.12
 import loginui1 1.0
 
 Item {
@@ -57,5 +57,4 @@ Item {
 
     Screen01 {
     }
-
 }

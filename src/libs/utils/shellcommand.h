@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Brian McGillion and Hugues Delorme
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
@@ -82,24 +57,24 @@ public:
     };
 
 
-    ShellCommand(const FilePath &workingDirectory, const Environment &environment);
+    ShellCommand(const QString &workingDirectory, const Environment &environment);
     ~ShellCommand() override;
 
     QString displayName() const;
     void setDisplayName(const QString &name);
 
     void addJob(const CommandLine &command,
-                const FilePath &workingDirectory = {},
+                const QString &workingDirectory = QString(),
                 const ExitCodeInterpreter &interpreter = {});
     void addJob(const CommandLine &command, int timeoutS,
-                const FilePath &workingDirectory = {},
+                const QString &workingDirectory = QString(),
                 const ExitCodeInterpreter &interpreter = {});
     void execute(); // Execute tasks asynchronously!
     void abort();
     bool lastExecutionSuccess() const;
     int lastExecutionExitCode() const;
 
-    const FilePath &defaultWorkingDirectory() const;
+    const QString &defaultWorkingDirectory() const;
     virtual const Environment processEnvironment() const;
 
     int defaultTimeoutS() const;
@@ -123,9 +98,9 @@ public:
     // This is called once per job in a thread.
     // When called from the UI thread it will execute fully synchronously, so no signals will
     // be triggered!
-    virtual void runCommand(QtcProcess &process,
+    virtual void runCommand(Utils::QtcProcess &process,
                             const CommandLine &command,
-                            const FilePath &workingDirectory = {});
+                            const QString &workingDirectory = QString());
 
     void cancel();
 
@@ -141,21 +116,23 @@ signals:
     void append(const QString &text);
     void appendSilently(const QString &text);
     void appendError(const QString &text);
-    void appendCommand(const Utils::FilePath &workingDirectory, const Utils::CommandLine &command);
+    void appendCommand(const QString &workingDirectory, const Utils::CommandLine &command);
     void appendMessage(const QString &text);
 
 protected:
     virtual void addTask(QFuture<void> &future);
     int timeoutS() const;
-    FilePath workDirectory(const FilePath &wd) const;
+    QString workDirectory(const QString &wd) const;
 
 private:
     void run(QFutureInterface<void> &future);
 
     // Run without a event loop in fully blocking mode. No signals will be delivered.
-    void runFullySynchronous(QtcProcess &proc, const FilePath &workingDirectory);
+    void runFullySynchronous(QtcProcess &proc,
+                             const QString &workingDirectory);
     // Run with an event loop. Signals will be delivered.
-    void runSynchronous(QtcProcess &proc, const FilePath &workingDirectory);
+    void runSynchronous(QtcProcess &proc,
+                        const QString &workingDirectory);
 
     class Internal::ShellCommandPrivate *const d;
 };

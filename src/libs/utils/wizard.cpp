@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "wizard.h"
 
 #include "algorithm.h"
@@ -32,7 +7,6 @@
 
 #include <utils/theme/theme.h>
 
-#include <QDebug>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QHash>
@@ -584,21 +558,6 @@ public:
     WizardProgressItem *m_startItem = nullptr;
 };
 
-inline QDebug &operator<<(QDebug &debug, const WizardProgressPrivate &progress)
-{
-    debug << "items:" << progress.m_items.size()
-          << "; visited:" << progress.m_visitedItems.size()
-          << "; reachable:" << progress.m_reachableItems.size();
-
-    return debug;
-}
-
-QDebug &operator<<(QDebug &debug, const WizardProgress &progress)
-{
-    debug << "WizardProgress{_: " << *progress.d_ptr << "}";
-    return debug;
-}
-
 class WizardProgressItemPrivate
 {
     WizardProgressItem *q_ptr;
@@ -612,22 +571,6 @@ public:
     QList<WizardProgressItem *> m_prevItems;
     WizardProgressItem *m_nextShownItem;
 };
-
-inline QDebug &operator<<(QDebug &debug, const WizardProgressItemPrivate &item)
-{
-    debug << "title:" << item.m_title
-          << "; word wrap:" << item.m_titleWordWrap
-          << "; progress:" << *item.m_wizardProgress
-          << "; pages:" << item.m_pages;
-
-    return debug;
-}
-
-QDebug &operator<<(QDebug &debug, const WizardProgressItem &item)
-{
-    debug << "WizardProgressItem{_: " << *item.d_ptr << "}";
-    return debug;
-}
 
 bool WizardProgressPrivate::isNextItem(WizardProgressItem *item, WizardProgressItem *nextItem)
 {

@@ -5,7 +5,7 @@ TEMPLATE = aux
 CONFIG -= debug_and_release
 
 # include(../qt-creator-defines.pri)
-include(../../qtcreator.pri)
+include(../../mfds.pri)
 
 build_online_docs: \
     DOC_FILES = $$PWD/qtdesignstudio-online.qdocconf

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "core_global.h"
@@ -56,8 +31,6 @@ class SettingsDatabase;
 
 namespace Internal { class MainWindow; }
 
-class NewDialog;
-
 class CORE_EXPORT ICore : public QObject
 {
     Q_OBJECT
@@ -80,8 +53,8 @@ public:
     static QWidget *newItemDialog();
     static void showNewItemDialog(const QString &title,
                                   const QList<IWizardFactory *> &factories,
-                                  const Utils::FilePath &defaultLocation = {},
-                                  const QVariantMap &extraVariables = {});
+                                  const QString &defaultLocation = QString(),
+                                  const QVariantMap &extraVariables = QVariantMap());
 
     static bool showOptionsDialog(const Utils::Id page, QWidget *parent = nullptr);
     static QString msgShowOptionsDialog();
@@ -135,7 +108,7 @@ public:
         StopOnLoadFail = 4,
         SwitchSplitIfAlreadyVisible = 8
     };
-    static void openFiles(const Utils::FilePaths &filePaths, OpenFilesFlags flags = None);
+    static void openFiles(const QStringList &fileNames, OpenFilesFlags flags = None);
 
     static void addPreCloseListener(const std::function<bool()> &listener);
 
@@ -166,17 +139,16 @@ public:
     static void setupScreenShooter(const QString &name, QWidget *w, const QRect &rc = QRect());
     static QString pluginPath();
     static QString userPluginPath();
-    static Utils::FilePath clangExecutable(const Utils::FilePath &clangBinDirectory);
-    static Utils::FilePath clangdExecutable(const Utils::FilePath &clangBinDirectory);
-    static Utils::FilePath clangTidyExecutable(const Utils::FilePath &clangBinDirectory);
-    static Utils::FilePath clazyStandaloneExecutable(const Utils::FilePath &clangBinDirectory);
-    static Utils::FilePath clangIncludeDirectory(const QString &clangVersion,
-                                                 const Utils::FilePath &clangFallbackIncludeDir);
+    static QString clangExecutable(const QString &clangBinDirectory);
+    static QString clangdExecutable(const QString &clangBinDirectory);
+    static QString clangTidyExecutable(const QString &clangBinDirectory);
+    static QString clazyStandaloneExecutable(const QString &clangBinDirectory);
+    static QString clangIncludeDirectory(const QString &clangVersion,
+                                         const QString &clangFallbackIncludeDir);
     static QString buildCompatibilityString();
     static QStatusBar *statusBar();
 
     static void saveSettings(SaveSettingsReason reason);
-    static void setNewDialogFactory(const std::function<NewDialog *(QWidget *)> &newFactory);
 
 private:
     static void updateNewItemDialogState();

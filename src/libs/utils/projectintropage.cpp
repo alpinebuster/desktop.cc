@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "projectintropage.h"
 #include "ui_projectintropage.h"
 
@@ -61,9 +36,8 @@ public:
     Ui::ProjectIntroPage m_ui;
     bool m_complete = false;
     QRegularExpressionValidator m_projectNameValidator;
-    QString m_projectNameValidatorUserMessage;
     bool m_forceSubProject = false;
-    FilePaths m_projectDirectories;
+    QStringList m_projectDirectories;
 };
 
 ProjectIntroPage::ProjectIntroPage(QWidget *parent) :
@@ -115,21 +89,20 @@ QString ProjectIntroPage::projectName() const
     return d->m_ui.nameLineEdit->text();
 }
 
-FilePath ProjectIntroPage::filePath() const
+QString ProjectIntroPage::path() const
 {
-    return d->m_ui.pathChooser->filePath();
+    return d->m_ui.pathChooser->filePath().toString();
 }
 
-void ProjectIntroPage::setFilePath(const FilePath &path)
+void ProjectIntroPage::setPath(const QString &path)
 {
-    d->m_ui.pathChooser->setFilePath(path);
+    d->m_ui.pathChooser->setPath(path);
 }
 
-void ProjectIntroPage::setProjectNameRegularExpression(const QRegularExpression &regEx, const QString &userErrorMessage)
+void ProjectIntroPage::setProjectNameRegularExpression(const QRegularExpression &regEx)
 {
     Q_ASSERT_X(regEx.isValid(), Q_FUNC_INFO, qPrintable(regEx.errorString()));
     d->m_projectNameValidator.setRegularExpression(regEx);
-    d->m_projectNameValidatorUserMessage = userErrorMessage;
 }
 
 void ProjectIntroPage::setProjectName(const QString &name)
@@ -159,7 +132,7 @@ bool ProjectIntroPage::validate()
         int index = d->m_ui.projectComboBox->currentIndex();
         if (index == 0)
             return false;
-        d->m_ui.pathChooser->setFilePath(d->m_projectDirectories.at(index));
+        d->m_ui.pathChooser->setPath(d->m_projectDirectories.at(index));
     }
     // Validate and display status
     if (!d->m_ui.pathChooser->isValid()) {
@@ -180,26 +153,20 @@ bool ProjectIntroPage::validate()
     }
 
     // Check existence of the directory
-    const FilePath projectDir =
-        filePath().pathAppended(QDir::fromNativeSeparators(d->m_ui.nameLineEdit->text()));
-
-    if (!projectDir.exists()) { // All happy
+    const QFileInfo projectDirFile(path() + QLatin1Char('/')
+                                   + QDir::fromNativeSeparators(d->m_ui.nameLineEdit->text()));
+    if (!projectDirFile.exists()) { // All happy
         hideStatusLabel();
         return true;
     }
 
-    if (projectDir.isDir()) {
+    if (projectDirFile.isDir()) {
         displayStatusMessage(InfoLabel::Warning, tr("The project already exists."));
         return true;
     }
     // Not a directory, but something else, likely causing directory creation to fail
     displayStatusMessage(InfoLabel::Error, tr("A file with that name already exists."));
     return false;
-}
-
-void ProjectIntroPage::fieldsUpdated()
-{
-    slotChanged();
 }
 
 void ProjectIntroPage::slotChanged()
@@ -237,7 +204,7 @@ void ProjectIntroPage::setProjectList(const QStringList &projectList)
     d->m_ui.projectComboBox->addItems(projectList);
 }
 
-void ProjectIntroPage::setProjectDirectories(const FilePaths &directoryList)
+void ProjectIntroPage::setProjectDirectories(const QStringList &directoryList)
 {
     d->m_projectDirectories = directoryList;
 }
@@ -265,10 +232,8 @@ bool ProjectIntroPage::validateProjectName(const QString &name, QString *errorMe
         // a more detailed error message
         if (validatorState != QValidator::Acceptable && (pos == -1 || pos >= name.count())) {
             if (errorMessage) {
-                if (d->m_projectNameValidatorUserMessage.isEmpty())
-                    *errorMessage = tr("Project name is invalid.");
-                else
-                    *errorMessage = d->m_projectNameValidatorUserMessage;
+                *errorMessage = tr("Name does not match \"%1\".").arg(
+                    d->m_projectNameValidator.regularExpression().pattern());
             }
             return false;
         }
@@ -295,8 +260,6 @@ void ProjectIntroPage::displayStatusMessage(InfoLabel::InfoType t, const QString
 {
     d->m_ui.stateLabel->setType(t);
     d->m_ui.stateLabel->setText(s);
-
-    emit statusMessageChanged(t, s);
 }
 
 void ProjectIntroPage::hideStatusLabel()

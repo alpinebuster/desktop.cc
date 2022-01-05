@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 Thorben Kroeger <thorbenkroeger@gmail.com>.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "theme.h"
 #include "theme_p.h"
 #include "../algorithm.h"
@@ -67,29 +42,6 @@ void setThemeApplicationPalette()
         QApplication::setPalette(m_creatorTheme->palette());
 }
 
-static void setMacAppearance(Theme *theme)
-{
-#ifdef Q_OS_MACOS
-    // Match the native UI theme and palette with the creator
-    // theme by forcing light aqua for light creator themes
-    // and dark aqua for dark themes.
-    if (theme)
-        Internal::forceMacAppearance(theme->flag(Theme::DarkUserInterface));
-#else
-    Q_UNUSED(theme)
-#endif
-}
-
-static bool macOSSystemIsDark()
-{
-#ifdef Q_OS_MACOS
-    static bool systemIsDark = Internal::currentAppearanceIsDark();
-    return systemIsDark;
-#else
-    return false;
-#endif
-}
-
 void setCreatorTheme(Theme *theme)
 {
     if (m_creatorTheme == theme)
@@ -97,7 +49,13 @@ void setCreatorTheme(Theme *theme)
     delete m_creatorTheme;
     m_creatorTheme = theme;
 
-    setMacAppearance(theme);
+#ifdef Q_OS_MACOS
+    // Match the native UI theme and palette with the creator
+    // theme by forcing light aqua for light creator themes.
+    if (theme && !theme->flag(Theme::DarkUserInterface))
+        Internal::forceMacOSLightAquaApperance();
+#endif
+
     setThemeApplicationPalette();
 }
 
@@ -121,10 +79,6 @@ Theme::~Theme()
 
 QStringList Theme::preferredStyles() const
 {
-    // Force Fusion style if we have a dark theme on Windows or Linux,
-    // because the default QStyle might not be up for it
-    if (!HostOsInfo::isMacHost() && d->preferredStyles.isEmpty() && flag(DarkUserInterface))
-        return {"Fusion"};
     return d->preferredStyles;
 }
 
@@ -214,7 +168,7 @@ void Theme::readSettings(QSettings &settings)
         for (int i = 0, total = e.keyCount(); i < total; ++i) {
             const QString key = QLatin1String(e.key(i));
             if (!settings.contains(key)) {
-                if (i < PaletteWindow || i > PalettePlaceholderTextDisabled)
+                if (i < PaletteWindow || i > PaletteShadowDisabled)
                     qWarning("Theme \"%s\" misses color setting for key \"%s\".",
                              qPrintable(d->fileName), qPrintable(key));
                 continue;
@@ -272,8 +226,6 @@ bool Theme::systemUsesDarkMode()
         bool ok;
         const auto setting = QSettings(regkey, QSettings::NativeFormat).value("AppsUseLightTheme").toInt(&ok);
         return ok && setting == 0;
-    } else if (HostOsInfo::isMacHost()) {
-        return macOSSystemIsDark();
     }
     return false;
 }
@@ -291,13 +243,6 @@ static QPalette copyPalette(const QPalette &p)
         }
     }
     return res;
-}
-
-void Theme::setInitialPalette(Theme *initTheme)
-{
-    macOSSystemIsDark(); // initialize value for system mode
-    setMacAppearance(initTheme);
-    initialPalette();
 }
 
 QPalette Theme::initialPalette()
@@ -355,9 +300,7 @@ QPalette Theme::palette() const
         {PaletteMid,                       QPalette::Mid,              QPalette::All,      false},
         {PaletteMidDisabled,               QPalette::Mid,              QPalette::Disabled, false},
         {PaletteShadow,                    QPalette::Shadow,           QPalette::All,      false},
-        {PaletteShadowDisabled,            QPalette::Shadow,           QPalette::Disabled, false},
-        {PalettePlaceholderText,           QPalette::PlaceholderText,  QPalette::All,      false},
-        {PalettePlaceholderTextDisabled,   QPalette::PlaceholderText,  QPalette::Disabled, false},
+        {PaletteShadowDisabled,            QPalette::Shadow,           QPalette::Disabled, false}
     };
 
     for (auto entry: mapping) {

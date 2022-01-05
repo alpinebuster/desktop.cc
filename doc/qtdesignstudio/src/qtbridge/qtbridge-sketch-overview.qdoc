@@ -26,7 +26,7 @@
 // Note: The \page value is hard-coded as a link in Qt Bridge for Sketch.
 
 /*!
-    \previouspage qtbridge-xd-using.html
+    \previouspage qtbridge-ps-using.html
     \page sketchqtbridge.html
     \nextpage qtbridge-sketch-setup.html
 

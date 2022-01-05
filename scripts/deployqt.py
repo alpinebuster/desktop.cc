@@ -390,7 +390,6 @@ def main():
                'wayland-decoration-client',
                'wayland-graphics-integration-client',
                'wayland-shell-integration',
-               'tls'
                ]
 
     if common.is_windows_platform():

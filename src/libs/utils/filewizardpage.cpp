@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "filewizardpage.h"
 #include "ui_filewizardpage.h"
 
@@ -80,16 +55,6 @@ QString FileWizardPage::fileName() const
     return d->m_ui.nameLineEdit->text();
 }
 
-FilePath FileWizardPage::filePath() const
-{
-    return d->m_ui.pathChooser->filePath();
-}
-
-void FileWizardPage::setFilePath(const FilePath &filePath)
-{
-    d->m_ui.pathChooser->setFilePath(filePath);
-}
-
 QString FileWizardPage::path() const
 {
     return d->m_ui.pathChooser->filePath().toString();
@@ -97,17 +62,12 @@ QString FileWizardPage::path() const
 
 void FileWizardPage::setPath(const QString &path)
 {
-    d->m_ui.pathChooser->setFilePath(FilePath::fromString(path));
+    d->m_ui.pathChooser->setPath(path);
 }
 
 void FileWizardPage::setFileName(const QString &name)
 {
     d->m_ui.nameLineEdit->setText(name);
-}
-
-void FileWizardPage::setAllowDirectoriesInFileSelector(bool allow)
-{
-    d->m_ui.nameLineEdit->setAllowDirectories(allow);
 }
 
 bool FileWizardPage::isComplete() const

@@ -1,8 +1,7 @@
 
-
 /****************************************************************************
 **
-** Copyright (C) 2021 The Qt Company Ltd.
+** Copyright (C) 2019 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of the examples of the Qt Design Studio.
@@ -49,76 +48,69 @@
 ** $QT_END_LICENSE$
 **
 ****************************************************************************/
-import QtQuick
-import QtQuick.Controls
+import QtQuick 2.15
+import QtQuick.Studio.Components 1.0
+import QtQuick.Controls 2.15
 import loginui1 1.0
 
 Rectangle {
-    width: Constants.width
-    height: Constants.height
+    color: "#ffffff"
+    gradient: Gradient {
+        GradientStop {
+            position: 0.5
+            color: "#ffffff"
+        }
 
-    color: Constants.backgroundColor
-
-    Image {
-        id: adventurePage
-        x: 0
-        y: 0
-        source: "images/adventurePage.jpg"
-        fillMode: Image.PreserveAspectFit
+        GradientStop {
+            position: 1
+            color: "#41cd52"
+        }
     }
 
-    Image {
-        id: qt_logo_green_128x128px
-        x: 296
-        y: 40
-        source: "images/qt_logo_green_128x128px.png"
-        fillMode: Image.PreserveAspectFit
-    }
     Text {
-        id: tagLine
-        width: 541
-        height: 78
-        color: "#ffffff"
-        text: qsTr("Are you ready to explore?")
-        font.pixelSize: 50
-        font.family: "Titillium Web ExtraLight"
-        anchors.verticalCenterOffset: -391
-        anchors.horizontalCenterOffset: 18
+        id: pageTitle
+        x: 273
+        y: 33
+        text: qsTr("Qt Account")
+        font.pixelSize: 24
+        font.bold: true
+        font.weight: Font.ExtraBold
+        anchors.verticalCenterOffset: -180
+        anchors.horizontalCenterOffset: 0
         anchors.centerIn: parent
+        font.family: Constants.font.family
     }
 
-    EntryField {
-        id: username
-        x: 128
-        y: 470
-        text: "Username or Email"
-    }
-
-    EntryField {
-        id: password
-        x: 128
-        y: 590
-        text: qsTr("Password")
+    Image {
+        id: logo
+        x: 8
+        y: 19
+        source: "qt_logo_green_64x64px.png"
+        fillMode: Image.PreserveAspectFit
     }
 
     PushButton {
-        id: login
-        x: 102
-        y: 966
-        text: qsTr("Continue")
+        id: loginButton
+        x: 260
+        y: 352
+        width: 120
+        height: 40
+        text: "Log In"
     }
 
     PushButton {
-        id: createAccount
-        x: 102
-        y: 1088
+        id: registerButton
+        x: 260
+        y: 398
+        width: 120
+        height: 40
         text: qsTr("Create Account")
     }
 }
 
 /*##^##
 Designer {
-    D{i:0;formeditorZoom:0.33}
+    D{i:0;autoSize:true;formeditorZoom:0.5;height:480;width:640}
 }
 ##^##*/
 

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "icontext.h"
@@ -47,18 +22,16 @@ class InfoBar;
 
 namespace Core {
 
-class EditorManager;
-class ExternalToolManager;
+class HomeManager;
+//class ExternalToolManager;
 class IDocument;
 class JsExpander;
-class MessageManager;
 class ModeManager;
 class ProgressManager;
 class NavigationWidget;
 enum class Side;
 class RightPaneWidget;
 class SettingsDatabase;
-class VcsManager;
 
 namespace Internal {
 
@@ -66,8 +39,8 @@ class FancyTabWidget;
 class GeneralSettings;
 class ProgressManagerPrivate;
 class ShortcutSettings;
-class ToolSettings;
-class MimeTypeSettings;
+//class ToolSettings;
+//class MimeTypeSettings;
 class VersionDialog;
 class WindowSupport;
 class SystemEditor;
@@ -89,7 +62,7 @@ public:
     void addContextObject(IContext *context);
     void removeContextObject(IContext *context);
 
-    static IDocument *openFiles(const Utils::FilePaths &filePaths,
+    static IDocument *openFiles(const QStringList &fileNames,
                                 ICore::OpenFilesFlags flags,
                                 const QString &workingDirectory = QString());
 
@@ -127,7 +100,7 @@ private:
     static void openFile();
     void aboutToShowRecentFiles();
     static void setFocusToEditor();
-    void aboutQtCreator();
+    void aboutMFDS();
     void aboutPlugins();
     void contact();
     void updateFocusWidget(QWidget *old, QWidget *now);
@@ -156,12 +129,9 @@ private:
     SettingsDatabase *m_settingsDatabase = nullptr;
     mutable QPrinter *m_printer = nullptr;
     WindowSupport *m_windowSupport = nullptr;
-    EditorManager *m_editorManager = nullptr;
-    ExternalToolManager *m_externalToolManager = nullptr;
-    MessageManager *m_messageManager = nullptr;
+    HomeManager *m_editorManager = nullptr;
     ProgressManagerPrivate *m_progressManager = nullptr;
     JsExpander *m_jsExpander = nullptr;
-    VcsManager *m_vcsManager = nullptr;
     ModeManager *m_modeManager = nullptr;
     FancyTabWidget *m_modeStack = nullptr;
     NavigationWidget *m_leftNavigationWidget = nullptr;
@@ -176,8 +146,6 @@ private:
     GeneralSettings *m_generalSettings = nullptr;
     SystemSettings *m_systemSettings = nullptr;
     ShortcutSettings *m_shortcutSettings = nullptr;
-    ToolSettings *m_toolSettings = nullptr;
-    MimeTypeSettings *m_mimeTypeSettings = nullptr;
     SystemEditor *m_systemEditor = nullptr;
 
     // actions
@@ -188,6 +156,7 @@ private:
     QAction *m_saveAllAction = nullptr;
     QAction *m_exitAction = nullptr;
     QAction *m_optionsAction = nullptr;
+    QAction *toggleModeSelectorStyleAction = nullptr;
     QAction *m_toggleLeftSideBarAction = nullptr;
     QAction *m_toggleRightSideBarAction = nullptr;
     QAction *m_cycleModeSelectorStyleAction = nullptr;
@@ -196,9 +165,10 @@ private:
     QAction *m_setModeSelectorStyleIconsOnlyAction = nullptr;
     QAction *m_themeAction = nullptr;
 
-    QToolButton *m_toggleLeftSideBarButton = nullptr;
-    QToolButton *m_toggleRightSideBarButton = nullptr;
-    bool m_askConfirmationBeforeExit = false;
+    QToolButton *m_toggleModeSelectorStyleButton = nullptr;
+    QToolButton *m_toggleLeftSideBarButton       = nullptr;
+    QToolButton *m_toggleRightSideBarButton      = nullptr;
+    bool m_askConfirmationBeforeExit             = false;
     QColor m_overrideColor;
     QList<std::function<bool()>> m_preCloseListeners;
 };

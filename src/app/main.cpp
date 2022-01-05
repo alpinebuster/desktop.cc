@@ -1,29 +1,4 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
-#include "../tools/qtcreatorcrashhandler/crashhandlersetup.h"
+#include "./qtcreatorcrashhandler/crashhandlersetup.h"
 
 #include <app/app_version.h>
 #include <extensionsystem/iplugin.h>
@@ -36,9 +11,9 @@
 #include <utils/environment.h>
 #include <utils/fileutils.h>
 #include <utils/hostosinfo.h>
+#include <utils/launcherinterface.h>
 #include <utils/optional.h>
 #include <utils/qtcsettings.h>
-#include <utils/singleton.h>
 #include <utils/temporarydirectory.h>
 
 #include <QDebug>
@@ -96,7 +71,7 @@ const char fixedOptionsC[] =
 "    -client                       Attempt to connect to already running first instance\n"
 "    -settingspath <path>          Override the default path where user settings are stored\n"
 "    -installsettingspath <path>   Override the default path from where user-independent settings are read\n"
-"    -temporarycleansettings, -tcs Use clean settings for debug or testing reasons\n"
+"    -temporarycleansettings       Use clean settings for debug or testing reasons\n"
 "    -pid <pid>                    Attempt to connect to instance given by pid\n"
 "    -block                        Block until editor is closed\n"
 "    -pluginpath <path>            Add a custom search path for plugins\n";
@@ -203,6 +178,31 @@ static inline int askMsgSendFailed()
                 QMessageBox::Retry);
 }
 
+// taken from utils/fileutils.cpp. We cannot use utils here since that depends app_version.h.
+static bool copyRecursively(const QString &srcFilePath, const QString &tgtFilePath)
+{
+    QFileInfo srcFileInfo(srcFilePath);
+    if (srcFileInfo.isDir()) {
+        QDir targetDir(tgtFilePath);
+        targetDir.cdUp();
+        if (!targetDir.mkdir(Utils::FilePath::fromString(tgtFilePath).fileName()))
+            return false;
+        QDir sourceDir(srcFilePath);
+        const QStringList fileNames = sourceDir.entryList
+                (QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System);
+        for (const QString &fileName : fileNames) {
+            const QString newSrcFilePath = srcFilePath + '/' + fileName;
+            const QString newTgtFilePath = tgtFilePath + '/' + fileName;
+            if (!copyRecursively(newSrcFilePath, newTgtFilePath))
+                return false;
+        }
+    } else {
+        if (!QFile::copy(srcFilePath, tgtFilePath))
+            return false;
+    }
+    return true;
+}
+
 static inline QStringList getPluginPaths()
 {
     QStringList rc(QDir::cleanPath(QApplication::applicationDirPath()
@@ -291,13 +291,6 @@ static void setHighDpiEnvironmentVariable()
         QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
             Qt::HighDpiScaleFactorRoundingPolicy::Round);
 #endif
-
-#endif
-    } else {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        /* AA_DisableHighDpiScaling is deprecated */
-        QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
-            Qt::HighDpiScaleFactorRoundingPolicy::Floor);
 #endif
     }
 }
@@ -485,18 +478,11 @@ int main(int argc, char **argv)
         QCoreApplication::setAttribute(Qt::AA_UseOpenGLES);
 #else
     qputenv("QSG_RHI_BACKEND", "opengl");
-    QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
-                Qt::HighDpiScaleFactorRoundingPolicy::Round);
 #endif
 
     if (qEnvironmentVariableIsSet("QTCREATOR_DISABLE_NATIVE_MENUBAR")
             || qgetenv("XDG_CURRENT_DESKTOP").startsWith("Unity")) {
         QApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
-    }
-
-    if (Utils::HostOsInfo::isRunningUnderRosetta()) {
-        // work around QTBUG-97085: QRegularExpression jitting is not reentrant under Rosetta
-        qputenv("QT_ENABLE_REGEXP_JIT", "0");
     }
 
     Utils::TemporaryDirectory::setMasterTemporaryDirectory(QDir::tempPath() + "/" + Core::Constants::IDE_CASED_ID + "-XXXXXX");
@@ -539,7 +525,8 @@ int main(int argc, char **argv)
     QCoreApplication::setOrganizationName(QLatin1String(Core::Constants::IDE_SETTINGSVARIANT_STR));
     QGuiApplication::setApplicationDisplayName(Core::Constants::IDE_DISPLAY_NAME);
 
-    auto cleanup = qScopeGuard([] { Utils::Singleton::deleteAll(); });
+    Utils::LauncherInterface::startLauncher();
+    auto cleanup = qScopeGuard([] { Utils::LauncherInterface::stopLauncher(); });
 
     const QStringList pluginArguments = app.arguments();
 
@@ -583,7 +570,7 @@ int main(int argc, char **argv)
 #endif
 
     PluginManager pluginManager;
-    PluginManager::setPluginIID(QLatin1String("org.qt-project.Qt.QtCreatorPlugin"));
+    PluginManager::setPluginIID(QLatin1String("org.milab.Qt.MFDSPlugin"));
     PluginManager::setGlobalSettings(globalSettings);
     PluginManager::setSettings(settings);
 
@@ -620,7 +607,7 @@ int main(int argc, char **argv)
     if (!overrideCodecForLocale.isEmpty())
         QTextCodec::setCodecForLocale(QTextCodec::codecForName(overrideCodecForLocale));
 
-    app.setDesktopFileName("org.qt-project.qtcreator.desktop");
+    app.setDesktopFileName("org.milab.mfds.desktop");
 
     // Make sure we honor the system's proxy settings
     QNetworkProxyFactory::setUseSystemConfiguration(true);

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
@@ -35,9 +10,7 @@
 namespace Utils {
 
 class AbstractMacroExpander;
-class CommandLine;
 class Environment;
-class MacroExpander;
 
 class QTCREATOR_UTILS_EXPORT ProcessArgs
 {
@@ -64,12 +37,14 @@ public:
     //! Join an argument list into a shell command
     static QString joinArgs(const QStringList &args, OsType osType = HostOsInfo::hostOs());
     //! Prepare argument of a shell command for feeding into QProcess
-    static ProcessArgs prepareArgs(const QString &args, SplitError *err, OsType osType,
-                                   const Environment *env = nullptr, const FilePath *pwd = nullptr,
+    static ProcessArgs prepareArgs(const QString &cmd, SplitError *err,
+                                   OsType osType = HostOsInfo::hostOs(),
+                                   const Environment *env = nullptr, const QString *pwd = nullptr,
                                    bool abortOnMeta = true);
     //! Prepare a shell command for feeding into QProcess
-    static bool prepareCommand(const CommandLine &cmdLine, QString *outCmd, ProcessArgs *outArgs,
-                               const Environment *env = nullptr, const FilePath *pwd = nullptr);
+    static bool prepareCommand(const QString &command, const QString &arguments,
+                               QString *outCmd, ProcessArgs *outArgs, OsType osType = HostOsInfo::hostOs(),
+                               const Environment *env = nullptr, const QString *pwd = nullptr);
     //! Quote and append each argument to a shell command
     static void addArgs(QString *args, const QStringList &inArgs);
     //! Append already quoted arguments to a shell command
@@ -135,34 +110,23 @@ public:
     enum RawType { Raw };
 
     CommandLine();
+    explicit CommandLine(const QString &executable);
     explicit CommandLine(const FilePath &executable);
+    CommandLine(const QString &exe, const QStringList &args);
     CommandLine(const FilePath &exe, const QStringList &args);
     CommandLine(const FilePath &exe, const QString &unparsedArgs, RawType);
 
-    static CommandLine fromUserInput(const QString &cmdline, MacroExpander *expander = nullptr);
-
-    void addArg(const QString &arg);
-    void addArgs(const QStringList &inArgs);
-
-    void addCommandLineAsArgs(const CommandLine &cmd);
+    void addArg(const QString &arg, OsType osType = HostOsInfo::hostOs());
+    void addArgs(const QStringList &inArgs, OsType osType = HostOsInfo::hostOs());
+    void addArgs(const CommandLine &cmd, OsType osType = HostOsInfo::hostOs());
 
     void addArgs(const QString &inArgs, RawType);
 
     QString toUserOutput() const;
 
     FilePath executable() const { return m_executable; }
-    void setExecutable(const FilePath &executable) { m_executable = executable; }
-
     QString arguments() const { return m_arguments; }
-    void setArguments(const QString &args) { m_arguments = args; }
-
-    QStringList splitArguments() const;
-
-    bool isEmpty() const { return m_executable.isEmpty(); }
-
-    friend bool operator==(const CommandLine &first, const CommandLine &second) {
-        return first.m_executable == second.m_executable && first.m_arguments == second.m_arguments;
-    }
+    QStringList splitArguments(OsType osType = HostOsInfo::hostOs()) const;
 
 private:
     FilePath m_executable;
@@ -170,9 +134,5 @@ private:
 };
 
 } // namespace Utils
-
-QT_BEGIN_NAMESPACE
-QTCREATOR_UTILS_EXPORT QDebug operator<<(QDebug dbg, const Utils::CommandLine &cmd);
-QT_END_NAMESPACE
 
 Q_DECLARE_METATYPE(Utils::CommandLine)

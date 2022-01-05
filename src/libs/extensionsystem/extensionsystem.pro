@@ -1,5 +1,5 @@
 DEFINES += EXTENSIONSYSTEM_LIBRARY
-include(../../qtcreatorlibrary.pri)
+include(../../mfds_library.pri)
 
 unix:LIBS += $$QMAKE_LIBS_DYNLOAD
 

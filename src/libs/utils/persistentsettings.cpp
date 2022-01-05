@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "persistentsettings.h"
 
 #include <QDebug>
@@ -183,7 +158,7 @@ void ParseValueStackEntry::addChild(const QString &key, const QVariant &v)
 class ParseContext : public Context
 {
 public:
-    QVariantMap parse(const FilePath &file);
+    QVariantMap parse(QFile &file);
 
 private:
     enum Element { QtCreatorElement, DataElement, VariableElement,
@@ -204,9 +179,9 @@ private:
     QString m_currentVariableName;
 };
 
-QVariantMap ParseContext::parse(const FilePath &file)
+QVariantMap ParseContext::parse(QFile &file)
 {
-    QXmlStreamReader r(file.fileContents());
+    QXmlStreamReader r(&file);
 
     m_result.clear();
     m_currentVariableName.clear();
@@ -354,11 +329,15 @@ bool PersistentSettingsReader::load(const FilePath &fileName)
 {
     m_valueMap.clear();
 
-    if (fileName.fileSize() == 0) // skip empty files
+    QFile file(fileName.toString());
+    if (file.size() == 0) // skip empty files
         return false;
 
+    if (!file.open(QIODevice::ReadOnly|QIODevice::Text))
+        return false;
     ParseContext ctx;
-    m_valueMap = ctx.parse(fileName);
+    m_valueMap = ctx.parse(file);
+    file.close();
     return true;
 }
 
@@ -454,7 +433,8 @@ void PersistentSettingsWriter::setContents(const QVariantMap &data)
 
 bool PersistentSettingsWriter::write(const QVariantMap &data, QString *errorString) const
 {
-    m_fileName.parentDir().ensureWritableDir();
+    QDir tmp;
+    tmp.mkpath(m_fileName.toFileInfo().path());
     FileSaver saver(m_fileName, QIODevice::Text);
     if (!saver.hasError()) {
         const Context ctx;

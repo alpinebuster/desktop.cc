@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
@@ -36,9 +11,8 @@ QT_END_NAMESPACE
 
 namespace Utils {
 
-class CommandLine;
 class Environment;
-class FilePath;
+class CommandLine;
 
 class QTCREATOR_UTILS_EXPORT TerminalCommand
 {
@@ -70,8 +44,8 @@ public:
 
     void setAbortOnMetaChars(bool abort);
 
-    void setWorkingDirectory(const Utils::FilePath &dir);
-    Utils::FilePath workingDirectory() const;
+    void setWorkingDirectory(const QString &dir);
+    QString workingDirectory() const;
 
     void setEnvironment(const Environment &env);
     Environment environment() const;
@@ -136,7 +110,7 @@ private:
     static QString msgCannotWriteTempFile();
     static QString msgCannotCreateTempDir(const QString & dir, const QString &why);
     static QString msgUnexpectedOutput(const QByteArray &what);
-    static QString msgCannotChangeToWorkDir(const Utils::FilePath &dir, const QString &why);
+    static QString msgCannotChangeToWorkDir(const QString & dir, const QString &why);
     static QString msgCannotExecute(const QString & p, const QString &why);
 
     void emitError(QProcess::ProcessError err, const QString &errorString);

@@ -1,47 +1,18 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "outputwindow.h"
 
 #include "actionmanager/actionmanager.h"
+#include "homemanager/homemanager.h"
 #include "coreconstants.h"
 #include "coreplugin.h"
-#include "editormanager/editormanager.h"
-#include "find/basetextfind.h"
 #include "icore.h"
 
-#include <aggregation/aggregate.h>
 #include <utils/outputformatter.h>
 #include <utils/qtcassert.h>
 
 #include <QAction>
 #include <QCursor>
 #include <QElapsedTimer>
-#include <QHash>
 #include <QMimeData>
-#include <QPair>
 #include <QPointer>
 #include <QRegularExpression>
 #include <QScrollBar>
@@ -90,7 +61,6 @@ public:
     OutputWindow::FilterModeFlags filterMode = OutputWindow::FilterModeFlag::Default;
     QTimer scrollTimer;
     QElapsedTimer lastMessage;
-    QHash<unsigned int, QPair<int, int>> taskPositions;
 };
 
 } // namespace Internal
@@ -154,15 +124,11 @@ OutputWindow::OutputWindow(Context context, const QString &settingsKey, QWidget 
     });
 
     connect(outputFormatter(), &OutputFormatter::openInEditorRequested, this, [](const Link &link) {
-        EditorManager::openEditorAt(link);
+        HomeManager::openEditorAt(link);
     });
 
     connect(verticalScrollBar(), &QAbstractSlider::actionTriggered,
             this, &OutputWindow::updateAutoScroll);
-
-    // For when "Find" changes the position; see QTCREATORBUG-26100.
-    connect(this, &QPlainTextEdit::selectionChanged, this, &OutputWindow::updateAutoScroll,
-            Qt::QueuedConnection);
 
     undoAction->setEnabled(false);
     redoAction->setEnabled(false);
@@ -181,19 +147,6 @@ OutputWindow::OutputWindow(Context context, const QString &settingsKey, QWidget 
         float zoom = Core::ICore::settings()->value(d->settingsKey).toFloat();
         setFontZoom(zoom);
     }
-
-    // Let selected text be colored as if the text edit was editable,
-    // otherwise the highlight for searching is too light
-    QPalette p = palette();
-    QColor activeHighlight = p.color(QPalette::Active, QPalette::Highlight);
-    p.setColor(QPalette::Highlight, activeHighlight);
-    QColor activeHighlightedText = p.color(QPalette::Active, QPalette::HighlightedText);
-    p.setColor(QPalette::HighlightedText, activeHighlightedText);
-    setPalette(p);
-
-    auto agg = new Aggregation::Aggregate;
-    agg->add(this);
-    agg->add(new BaseTextFind(this));
 }
 
 OutputWindow::~OutputWindow()
@@ -274,7 +227,7 @@ void OutputWindow::showEvent(QShowEvent *e)
 {
     QPlainTextEdit::showEvent(e);
     if (d->scrollToBottom)
-        scrollToBottom();
+        verticalScrollBar()->setValue(verticalScrollBar()->maximum());
 }
 
 void OutputWindow::wheelEvent(QWheelEvent *e)
@@ -494,42 +447,6 @@ void OutputWindow::appendMessage(const QString &output, OutputFormat format)
         d->queueTimer.start();
 }
 
-void OutputWindow::registerPositionOf(unsigned taskId, int linkedOutputLines, int skipLines,
-                                      int offset)
-{
-    if (linkedOutputLines <= 0)
-        return;
-
-    const int blocknumber = document()->blockCount() - offset;
-    const int firstLine = blocknumber - linkedOutputLines - skipLines;
-    const int lastLine = firstLine + linkedOutputLines - 1;
-
-    d->taskPositions.insert(taskId, qMakePair(firstLine, lastLine));
-}
-
-bool OutputWindow::knowsPositionOf(unsigned taskId) const
-{
-    return d->taskPositions.contains(taskId);
-}
-
-void OutputWindow::showPositionOf(unsigned taskId)
-{
-    QPair<int, int> position = d->taskPositions.value(taskId);
-    QTextCursor newCursor(document()->findBlockByNumber(position.second));
-
-    // Move cursor to end of last line of interest:
-    newCursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::MoveAnchor);
-    setTextCursor(newCursor);
-
-    // Move cursor and select lines:
-    newCursor.setPosition(document()->findBlockByNumber(position.first).position(),
-                          QTextCursor::KeepAnchor);
-    setTextCursor(newCursor);
-
-    // Center cursor now:
-    centerCursor();
-}
-
 QMimeData *OutputWindow::createMimeDataFromSelection() const
 {
     const auto mimeData = new QMimeData;
@@ -561,7 +478,6 @@ void OutputWindow::clear()
 {
     d->formatter.clear();
     d->scrollToBottom = true;
-    d->taskPositions.clear();
 }
 
 void OutputWindow::flush()
@@ -677,46 +593,5 @@ private:
         return Status::NotHandled;
     }
 };
-
-void Internal::CorePlugin::testOutputFormatter()
-{
-    const QString input =
-            "B to be handled by B\r\r\n"
-            "not to be handled\n\n\n\n"
-            "A to be handled by A\n"
-            "continuation for A\r\n"
-            "B looks like B, but still continuation for A\r\n"
-            "A end of A\n"
-            "A next A\n"
-            "A end of next A\n"
-            " A trick\r\n"
-            "line with \r embedded carriage return\n"
-            "B to be handled by B\n";
-    const QString output =
-            "handled by B\n"
-            "not to be handled\n\n\n\n"
-            "handled by A\n"
-            "handled by A\n"
-            "handled by A\n"
-            "handled by A\n"
-            "handled by A\n"
-            "handled by A\n"
-            " A trick\n"
-            " embedded carriage return\n"
-            "handled by B\n";
-
-    // Stress-test the implementation by providing the input in chunks, splitting at all possible
-    // offsets.
-    for (int i = 0; i < input.length(); ++i) {
-        OutputFormatter formatter;
-        QPlainTextEdit textEdit;
-        formatter.setPlainTextEdit(&textEdit);
-        formatter.setLineParsers({new TestFormatterB, new TestFormatterA});
-        formatter.appendMessage(input.left(i), StdOutFormat);
-        formatter.appendMessage(input.mid(i), StdOutFormat);
-        formatter.flush();
-        QCOMPARE(textEdit.toPlainText(), output);
-    }
-}
 #endif // WITH_TESTS
 } // namespace Core

@@ -12,8 +12,8 @@
         <file>images/open@2x.png</file>
         <file>images/project.png</file>
         <file>images/project@2x.png</file>
-        <file>images/qtaccount.png</file>
-        <file>images/qtaccount@2x.png</file>
+        <file>images/account.png</file>
+        <file>images/account@2x.png</file>
         <file>images/session.png</file>
         <file>images/session@2x.png</file>
         <file>images/userguide.png</file>
@@ -25,7 +25,11 @@
         <file>images/border.png</file>
         <file>images/download.png</file>
         <file>images/download@2x.png</file>
-        <file>images/settings.png</file>
-        <file>images/settings@2x.png</file>
+        <file>images/mode_welcome@24x24.png</file>
+        <file>images/mode_welcome_mask@24x24.png</file>
+        <file>images/cloud_download.png</file>
+        <file>images/cloud_download@2x.png</file>
+        <file>images/mode_welcome@16x16.png</file>
+        <file>images/mode_welcome_mask@16x16.png</file>
     </qresource>
 </RCC>

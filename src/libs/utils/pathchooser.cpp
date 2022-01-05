@@ -1,31 +1,5 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "pathchooser.h"
 
-#include "commandline.h"
 #include "environment.h"
 #include "hostosinfo.h"
 #include "macroexpander.h"
@@ -70,13 +44,14 @@
 
 namespace Utils {
 
-static FilePath appBundleExpandedPath(const FilePath &path)
+static QString appBundleExpandedPath(const QString &path)
 {
-    if (path.osType() == OsTypeMac && path.endsWith(".app")) {
+    if (HostOsInfo::hostOs() == OsTypeMac && path.endsWith(".app")) {
         // possibly expand to Foo.app/Contents/MacOS/Foo
-        if (path.isDir()) {
-            const FilePath exePath = path / "Contents/MacOS" / path.completeBaseName();
-            if (exePath.exists())
+        QFileInfo info(path);
+        if (info.isDir()) {
+            QString exePath = path + "/Contents/MacOS/" + info.completeBaseName();
+            if (QFileInfo::exists(exePath))
                 return exePath;
         }
     }
@@ -126,7 +101,7 @@ bool BinaryVersionToolTipEventFilter::eventFilter(QObject *o, QEvent *e)
     const QString binary = le->text();
     if (!binary.isEmpty()) {
         const QString version = BinaryVersionToolTipEventFilter::toolVersion(
-                    CommandLine(FilePath::fromString(QDir::cleanPath(binary)), m_arguments));
+                    CommandLine(QDir::cleanPath(binary), m_arguments));
         if (!version.isEmpty()) {
             // Concatenate tooltips.
             QString tooltip = "<html><head/><body>";
@@ -167,7 +142,8 @@ public:
         BinaryVersionToolTipEventFilter(pe->lineEdit()), m_pathChooser(pe) {}
 
 private:
-    QString defaultToolTip() const override { return m_pathChooser->errorMessage(); }
+    QString defaultToolTip() const override
+        { return m_pathChooser->errorMessage(); }
 
     const PathChooser *m_pathChooser = nullptr;
 };
@@ -179,7 +155,7 @@ class PathChooserPrivate
 public:
     PathChooserPrivate();
 
-    FilePath expandedPath(const QString &path) const;
+    QString expandedPath(const QString &path) const;
 
     QHBoxLayout *m_hLayout = nullptr;
     FancyLineEdit *m_lineEdit = nullptr;
@@ -190,7 +166,7 @@ public:
     FilePath m_initialBrowsePathOverride;
     QString m_defaultValue;
     FilePath m_baseDirectory;
-    EnvironmentChange m_environmentChange;
+    Environment m_environment;
     BinaryVersionToolTipEventFilter *m_binaryVersionToolTipEventFilter = nullptr;
     QList<QAbstractButton *> m_buttons;
     MacroExpander *m_macroExpander = globalMacroExpander();
@@ -203,28 +179,24 @@ PathChooserPrivate::PathChooserPrivate()
 {
 }
 
-FilePath PathChooserPrivate::expandedPath(const QString &input) const
+QString PathChooserPrivate::expandedPath(const QString &input) const
 {
     if (input.isEmpty())
-        return {};
+        return input;
 
-    FilePath path = FilePath::fromUserInput(input);
-
-    Environment env = path.deviceEnvironment();
-    m_environmentChange.applyToEnvironment(env);
-    path = env.expandVariables(path);
-
+    QString expandedInput = m_environment.expandVariables(input);
     if (m_macroExpander)
-        path = m_macroExpander->expand(path);
+        expandedInput = m_macroExpander->expand(expandedInput);
 
+    const QString path = FilePath::fromUserInput(expandedInput).toString();
     if (path.isEmpty())
         return path;
 
     switch (m_acceptingKind) {
     case PathChooser::Command:
     case PathChooser::ExistingCommand: {
-        const FilePath expanded = path.searchInPath({m_baseDirectory});
-        return expanded.isEmpty() ? path : expanded;
+        const FilePath expanded = m_environment.searchInPath(path, {m_baseDirectory});
+        return expanded.isEmpty() ? path : expanded.toString();
     }
     case PathChooser::Any:
         break;
@@ -232,19 +204,8 @@ FilePath PathChooserPrivate::expandedPath(const QString &input) const
     case PathChooser::ExistingDirectory:
     case PathChooser::File:
     case PathChooser::SaveFile:
-        if (!m_baseDirectory.isEmpty()) {
-            Utils::FilePath fp = m_baseDirectory.resolvePath(path.path()).absoluteFilePath();
-            // FIXME bad hotfix for manually editing PathChooser (invalid paths, jumping cursor)
-            // examples: have an absolute path and try to change the device letter by typing the new
-            // letter and removing the original afterwards ends up in
-            // D:\\dev\\project\\cD:\\dev\\build-project (before trying to remove the original)
-            // as 'cD:\\dev\\build-project' is considered is handled as being relative
-            // input = "cD:\\dev\build-project"; // prepended 'c' to change the device letter
-            // m_baseDirectory = "D:\\dev\\project"
-            if (!fp.needsDevice() && HostOsInfo::isWindowsHost() && fp.toString().count(':') > 1)
-                return path;
-            return fp;
-        }
+        if (!m_baseDirectory.isEmpty() && QFileInfo(path).isRelative())
+            return m_baseDirectory.pathAppended(path).toFileInfo().absoluteFilePath();
         break;
     }
     return path;
@@ -267,11 +228,7 @@ PathChooser::PathChooser(QWidget *parent) :
             [this] { emit rawPathChanged(rawPath()); });
     connect(d->m_lineEdit, &FancyLineEdit::validChanged, this, &PathChooser::validChanged);
     connect(d->m_lineEdit, &QLineEdit::editingFinished, this, &PathChooser::editingFinished);
-    connect(d->m_lineEdit, &QLineEdit::textChanged, this, [this] {
-        const QString text = d->m_lineEdit->text();
-        emit pathChanged(text);
-        emit filePathChanged(FilePath::fromUserInput(text));
-    });
+    connect(d->m_lineEdit, &QLineEdit::textChanged, this, [this] { emit pathChanged(d->m_lineEdit->text()); });
 
     d->m_lineEdit->setMinimumWidth(120);
     d->m_hLayout->addWidget(d->m_lineEdit);
@@ -282,6 +239,7 @@ PathChooser::PathChooser(QWidget *parent) :
     setLayout(d->m_hLayout);
     setFocusProxy(d->m_lineEdit);
     setFocusPolicy(d->m_lineEdit->focusPolicy());
+    setEnvironment(Environment::systemEnvironment());
 
     d->m_lineEdit->setValidationFunction(defaultValidationFunction());
 }
@@ -332,10 +290,10 @@ FilePath PathChooser::baseDirectory() const
     return d->m_baseDirectory;
 }
 
-void PathChooser::setEnvironmentChange(const EnvironmentChange &env)
+void PathChooser::setEnvironment(const Environment &env)
 {
     QString oldExpand = filePath().toString();
-    d->m_environmentChange = env;
+    d->m_environment = env;
     if (filePath().toString() != oldExpand) {
         triggerChanged();
         emit rawPathChanged(rawPath());
@@ -349,17 +307,12 @@ QString PathChooser::rawPath() const
 
 FilePath PathChooser::rawFilePath() const
 {
-    return FilePath::fromUserInput(d->m_lineEdit->text());
+    return FilePath::fromString(QDir::fromNativeSeparators(d->m_lineEdit->text()));
 }
 
 FilePath PathChooser::filePath() const
 {
-    return d->expandedPath(rawFilePath().toString());
-}
-
-FilePath PathChooser::absoluteFilePath() const
-{
-    return d->m_baseDirectory.resolvePath(filePath());
+    return FilePath::fromUserInput(d->expandedPath(rawFilePath().toString()));
 }
 
 // FIXME: try to remove again
@@ -416,27 +369,30 @@ void PathChooser::slotBrowse()
     }
 
     // Prompt for a file/dir
-    FilePath newPath;
+    QString newPath;
     switch (d->m_acceptingKind) {
     case PathChooser::Directory:
     case PathChooser::ExistingDirectory:
-        newPath = FileUtils::getExistingDirectory(this,
-                        makeDialogTitle(tr("Choose Directory")), predefined);
+        newPath = QFileDialog::getExistingDirectory(this,
+                makeDialogTitle(tr("Choose Directory")), predefined.toUserOutput());
         break;
     case PathChooser::ExistingCommand:
     case PathChooser::Command:
-        newPath = FileUtils::getOpenFilePath(this,
-                        makeDialogTitle(tr("Choose Executable")), predefined, d->m_dialogFilter);
+        newPath = QFileDialog::getOpenFileName(this,
+                makeDialogTitle(tr("Choose Executable")), predefined.toUserOutput(),
+                d->m_dialogFilter);
         newPath = appBundleExpandedPath(newPath);
         break;
     case PathChooser::File: // fall through
-        newPath = FileUtils::getOpenFilePath(this,
-                        makeDialogTitle(tr("Choose File")), predefined, d->m_dialogFilter);
+        newPath = QFileDialog::getOpenFileName(this,
+                makeDialogTitle(tr("Choose File")), predefined.toUserOutput(),
+                d->m_dialogFilter);
         newPath = appBundleExpandedPath(newPath);
         break;
     case PathChooser::SaveFile:
-        newPath = FileUtils::getSaveFilePath(this,
-                        makeDialogTitle(tr("Choose File")), predefined, d->m_dialogFilter);
+        newPath = QFileDialog::getSaveFileName(this,
+                makeDialogTitle(tr("Choose File")), predefined.toUserOutput(),
+                d->m_dialogFilter);
         break;
     case PathChooser::Any: {
         QFileDialog dialog(this);
@@ -450,7 +406,7 @@ void PathChooser::slotBrowse()
             // probably loop here until the *.framework dir match
             QStringList paths = dialog.selectedFiles();
             if (!paths.isEmpty())
-                newPath = FilePath::fromString(paths.at(0));
+                newPath = paths.at(0);
         }
         break;
         }
@@ -463,13 +419,13 @@ void PathChooser::slotBrowse()
     window()->raise();
     window()->activateWindow();
 
-    // Delete trailing slashes unless it is "/" only.
+    // Delete trailing slashes unless it is "/"|"\\", only
     if (!newPath.isEmpty()) {
-        if (newPath.endsWith("/") && newPath.path().size() > 1)
-            newPath = newPath.withNewPath(newPath.path().chopped(1));
-        setFilePath(newPath);
+        newPath = QDir::toNativeSeparators(newPath);
+        if (newPath.size() > 1 && newPath.endsWith(QDir::separator()))
+            newPath.truncate(newPath.size() - 1);
+        setPath(newPath);
     }
-
     emit browsingFinished();
     triggerChanged();
 }
@@ -542,12 +498,13 @@ bool PathChooser::validatePath(FancyLineEdit *edit, QString *errorMessage) const
         }
     }
 
-    const FilePath filePath = d->expandedPath(path);
-    if (filePath.isEmpty()) {
+    const QString expandedPath = d->expandedPath(path);
+    if (expandedPath.isEmpty()) {
         if (errorMessage)
             *errorMessage = tr("The path \"%1\" expanded to an empty string.").arg(QDir::toNativeSeparators(path));
         return false;
     }
+    const FilePath filePath = FilePath::fromString(expandedPath);
 
     // Check if existing
     switch (d->m_acceptingKind) {
@@ -605,12 +562,6 @@ bool PathChooser::validatePath(FancyLineEdit *edit, QString *errorMessage) const
                 *errorMessage = tr("The path \"%1\" is not a directory.").arg(filePath.toUserOutput());
             return false;
         }
-        if (HostOsInfo::isWindowsHost() && !filePath.startsWithDriveLetter()
-                && !filePath.startsWith("\\\\") && !filePath.startsWith("//")) {
-            if (errorMessage)
-                *errorMessage = tr("Invalid path \"%1\".").arg(filePath.toUserOutput());
-            return false;
-        }
         break;
     case PathChooser::Command:
         if (filePath.exists() && !filePath.isExecutableFile()) {
@@ -639,14 +590,14 @@ QString PathChooser::label()
     return tr("Path:");
 }
 
-FilePath PathChooser::homePath()
+QString PathChooser::homePath()
 {
     // Return 'users/<name>/Documents' on Windows, since Windows explorer
     // does not let people actually display the contents of their home
     // directory. Alternatively, create a QtCreator-specific directory?
     if (HostOsInfo::isWindowsHost())
-        return FilePath::fromString(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-    return FilePath::fromString(QDir::homePath());
+        return QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    return QDir::homePath();
 }
 
 /*!
@@ -717,9 +668,9 @@ FancyLineEdit *PathChooser::lineEdit() const
     return d->m_lineEdit;
 }
 
-QString PathChooser::toolVersion(const CommandLine &cmd)
+QString PathChooser::toolVersion(const QString &binary, const QStringList &arguments)
 {
-    return BinaryVersionToolTipEventFilter::toolVersion(cmd);
+    return BinaryVersionToolTipEventFilter::toolVersion({binary, arguments});
 }
 
 void PathChooser::installLineEditVersionToolTip(QLineEdit *le, const QStringList &arguments)

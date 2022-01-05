@@ -1,35 +1,10 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "basefilewizardfactory.h"
 
 #include "basefilewizard.h"
 #include "icontext.h"
 #include "icore.h"
 #include "ifilewizardextension.h"
-#include "editormanager/editormanager.h"
+#include "homemanager/homemanager.h"
 #include "dialogs/promptoverwritedialog.h"
 #include <extensionsystem/pluginmanager.h>
 #include <utils/filewizardpage.h>
@@ -69,12 +44,10 @@ static int indexOfFile(const GeneratedFiles &f, const QString &path)
     \sa Core::BaseFileWizardFactory
 */
 
-Utils::Wizard *BaseFileWizardFactory::runWizardImpl(const FilePath &path, QWidget *parent,
+Utils::Wizard *BaseFileWizardFactory::runWizardImpl(const QString &path, QWidget *parent,
                                                     Id platform,
-                                                    const QVariantMap &extraValues,
-                                                    bool showWizard)
+                                                    const QVariantMap &extraValues)
 {
-    Q_UNUSED(showWizard);
     QTC_ASSERT(!path.isEmpty(), return nullptr);
 
     // Create dialog and run it. Ensure that the dialog is deleted when
@@ -86,11 +59,10 @@ Utils::Wizard *BaseFileWizardFactory::runWizardImpl(const FilePath &path, QWidge
     if (flags().testFlag(ForceCapitalLetterForFileName))
         dialogParameterFlags |= WizardDialogParameters::ForceCapitalLetterForFileName;
 
-    Wizard *wizard = create(parent, WizardDialogParameters(path,
-                                                           platform,
-                                                           requiredFeatures(),
-                                                           dialogParameterFlags,
-                                                           extraValues));
+    Utils::Wizard *wizard = create(parent, WizardDialogParameters(path, platform,
+                                                                  requiredFeatures(),
+                                                                  dialogParameterFlags,
+                                                                  extraValues));
     QTC_CHECK(wizard);
     return wizard;
 }
@@ -188,7 +160,7 @@ bool BaseFileWizardFactory::postGenerateOpenEditors(const GeneratedFiles &l, QSt
 {
     foreach (const GeneratedFile &file, l) {
         if (file.attributes() & GeneratedFile::OpenEditorAttribute) {
-            if (!EditorManager::openEditor(FilePath::fromString(file.path()), file.editorId())) {
+            if (!HomeManager::openEditor(file.path(), file.editorId())) {
                 if (errorMessage)
                     *errorMessage = tr("Failed to open an editor for \"%1\".").arg(QDir::toNativeSeparators(file.path()));
                 return false;
@@ -257,7 +229,7 @@ BaseFileWizardFactory::OverwriteResult BaseFileWizardFactory::promptOverwrite(Ge
 
     if (oddStuffFound) {
         *errorMessage = tr("The project directory %1 contains files which cannot be overwritten:\n%2.")
-                .arg(QDir::toNativeSeparators(commonExistingPath), fileNamesMsgPart);
+                .arg(QDir::toNativeSeparators(commonExistingPath)).arg(fileNamesMsgPart);
         return OverwriteError;
     }
     // Prompt to overwrite existing files.
@@ -287,17 +259,21 @@ BaseFileWizardFactory::OverwriteResult BaseFileWizardFactory::promptOverwrite(Ge
     \a baseName already has one.
 */
 
-FilePath BaseFileWizardFactory::buildFileName(const FilePath &path,
-                                              const QString &baseName,
-                                              const QString &extension)
+QString BaseFileWizardFactory::buildFileName(const QString &path,
+                                      const QString &baseName,
+                                      const QString &extension)
 {
-    FilePath rc = path.pathAppended(baseName);
+    QString rc = path;
+    const QChar slash = QLatin1Char('/');
+    if (!rc.isEmpty() && !rc.endsWith(slash))
+        rc += slash;
+    rc += baseName;
     // Add extension unless user specified something else
-    const QChar dot = '.';
+    const QChar dot = QLatin1Char('.');
     if (!extension.isEmpty() && !baseName.contains(dot)) {
         if (!extension.startsWith(dot))
-            rc = rc.stringAppended(dot);
-        rc = rc.stringAppended(extension);
+            rc += dot;
+        rc += extension;
     }
     if (debugWizard)
         qDebug() << Q_FUNC_INFO << rc;

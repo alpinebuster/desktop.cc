@@ -1,35 +1,9 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
 
 #include "environment.h"
 #include "commandline.h"
-#include "processutils.h"
 
 #include <QProcess>
 #include <QTextCodec>
@@ -65,13 +39,9 @@ public:
         ProcessLauncherImpl
     };
 
-    QtcProcess(ProcessImpl processImpl, ProcessMode processMode, QObject *parent = nullptr);
     QtcProcess(ProcessImpl processImpl, QObject *parent = nullptr);
-    QtcProcess(ProcessMode processMode, QObject *parent = nullptr);
     QtcProcess(QObject *parent = nullptr);
     ~QtcProcess();
-
-    ProcessMode processMode() const;
 
     enum Result {
         // Finished successfully. Unless an ExitCodeInterpreter is set
@@ -91,7 +61,6 @@ public:
     };
 
     void setEnvironment(const Environment &env);
-    void unsetEnvironment();
     const Environment &environment() const;
 
     void setCommand(const CommandLine &cmdLine);
@@ -104,15 +73,12 @@ public:
     void setUseCtrlCStub(bool enabled);
     void setLowPriority();
     void setDisableUnixTerminal();
-    void setUseTerminal(bool on);
-    void setRunAsRoot(bool on);
 
     void start();
+    void start(const QString &cmd, const QStringList &args = {});
     void terminate();
     void interrupt();
 
-    static bool startDetached(const CommandLine &cmd, const FilePath &workingDirectory = {},
-                              qint64 *pid = nullptr);
     // Starts the command and waits for finish. User input processing depends
     // on whether setProcessUserEventWhileRunning was called.
     void runBlocking();
@@ -136,6 +102,8 @@ public:
     void setStdErrLineCallback(const std::function<void(const QString &)> &callback);
 
     static void setRemoteProcessHooks(const DeviceProcessHooks &hooks);
+
+    void setOpenMode(QIODevice::OpenMode mode);
 
     bool stopProcess();
     bool readDataFromProcess(int timeoutS, QByteArray *stdOut, QByteArray *stdErr,
@@ -189,11 +157,13 @@ public:
     void kill();
 
     qint64 write(const QByteArray &input);
+    void closeWriteChannel();
     void close();
 
-    void setStandardInputFile(const QString &inputFile);
+    void setKeepWriteChannelOpen();
+    bool keepsWriteChannelOpen() const;
 
-    QString toStandaloneCommandLine() const;
+    void setStandardInputFile(const QString &inputFile);
 
 signals:
     void started();
@@ -211,10 +181,15 @@ private:
     void beginFeed();
     void feedStdOut(const QByteArray &data);
     void endFeed();
+
+    void setProcessEnvironment(const QProcessEnvironment &environment) = delete;
+    QProcessEnvironment processEnvironment() const = delete;
 };
 
 using ExitCodeInterpreter = std::function<QtcProcess::Result(int /*exitCode*/)>;
 
 QTCREATOR_UTILS_EXPORT QDebug operator<<(QDebug str, const QtcProcess &);
+
+using SynchronousProcess = QtcProcess; // FIXME: Remove.
 
 } // namespace Utils

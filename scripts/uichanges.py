@@ -42,7 +42,7 @@ import subprocess
 from xml.sax import saxutils, handler, make_parser
 
 baseDir = os.getcwd()
-transDir = os.path.join(baseDir, 'share/qtcreator/translations')
+transDir = os.path.join(baseDir, 'share/mfds/translations')
 unchangedContexts = 0
 
 # --- The ContentHandler

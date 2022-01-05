@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #pragma once
 
 #include "utils_global.h"
@@ -34,9 +9,6 @@
 
 #include <QByteArray>
 #include <QString>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#include <QStringEncoder>
-#endif
 
 #include <algorithm>
 #include <cmath>
@@ -136,10 +108,6 @@ public:
 
     BasicSmallString(const QString &qString)
         : BasicSmallString(BasicSmallString::fromQString(qString))
-    {}
-
-    BasicSmallString(const QStringView qStringView)
-        : BasicSmallString(BasicSmallString::fromQStringView(qStringView))
     {}
 
     BasicSmallString(const QByteArray &qByteArray)
@@ -360,23 +328,16 @@ public:
         return end();
     }
 
-    static BasicSmallString fromQString(const QString &qString)
+    static
+    BasicSmallString fromQString(const QString &qString)
     {
-        BasicSmallString string;
-        string.append(qString);
+        const QByteArray &utf8ByteArray = qString.toUtf8();
 
-        return string;
+        return BasicSmallString(utf8ByteArray.constData(), uint(utf8ByteArray.size()));
     }
 
-    static BasicSmallString fromQStringView(QStringView qStringView)
-    {
-        BasicSmallString string;
-        string.append(qStringView);
-
-        return string;
-    }
-
-    static BasicSmallString fromQByteArray(const QByteArray &utf8ByteArray)
+    static
+    BasicSmallString fromQByteArray(const QByteArray &utf8ByteArray)
     {
         return BasicSmallString(utf8ByteArray.constData(), uint(utf8ByteArray.size()));
     }
@@ -481,32 +442,7 @@ public:
         setSize(newSize);
     }
 
-    void append(QStringView string)
-    {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-        QStringEncoder encoder{QStringEncoder::Utf8};
-
-        size_type oldSize = size();
-        size_type newSize = oldSize + static_cast<size_type>(encoder.requiredSpace(string.size()));
-
-        reserve(optimalCapacity(newSize));
-        auto newEnd = encoder.appendToBuffer(data() + size(), string);
-        *newEnd = 0;
-        setSize(newEnd - data());
-#else
-        QByteArray array = string.toUtf8();
-        append(SmallStringView{array.data(), static_cast<size_type>(array.size())});
-#endif
-    }
-
     BasicSmallString &operator+=(SmallStringView string)
-    {
-        append(string);
-
-        return *this;
-    }
-
-    BasicSmallString &operator+=(QStringView string)
     {
         append(string);
 

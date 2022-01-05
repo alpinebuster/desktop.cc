@@ -1,37 +1,11 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "generatedfile.h"
 
-#include <coreplugin/editormanager/editormanager.h>
+#include <coreplugin/homemanager/homemanager.h>
 
 #include <utils/fileutils.h>
 #include <utils/textfileformat.h>
 
 #include <QCoreApplication>
-#include <QDebug>
 #include <QDir>
 #include <QString>
 
@@ -56,38 +30,16 @@ class GeneratedFilePrivate : public QSharedData
 {
 public:
     GeneratedFilePrivate() = default;
-    explicit GeneratedFilePrivate(const Utils::FilePath &path);
-    explicit GeneratedFilePrivate(const QString &path);
-    Utils::FilePath path;
+    explicit GeneratedFilePrivate(const QString &p);
+    QString path;
     QByteArray contents;
     Id editorId;
     bool binary = false;
     GeneratedFile::Attributes attributes;
 };
 
-inline QDebug &operator<<(QDebug &debug, const Core::GeneratedFilePrivate &file)
-{
-    debug << "path: " << file.path
-          << "; editorId: " << file.editorId.toString()
-          << "; binary: " << file.binary
-          << "; contents: " << file.contents.size();
-    return debug;
-}
-
-QDebug &operator<<(QDebug &debug, const Core::GeneratedFile &file)
-{
-    debug << "GeneratedFile{_: " << *file.m_d << "}";
-    return debug;
-}
-
-GeneratedFilePrivate::GeneratedFilePrivate(const QString &path) : // FIXME Don't use - Remove when possible
-    path(FilePath::fromString(path).cleanPath()),
-    attributes({})
-{
-}
-
-GeneratedFilePrivate::GeneratedFilePrivate(const Utils::FilePath &path) :
-    path(path.cleanPath()),
+GeneratedFilePrivate::GeneratedFilePrivate(const QString &p) :
+    path(QDir::cleanPath(p)),
     attributes({})
 {
 }
@@ -97,13 +49,8 @@ GeneratedFile::GeneratedFile() :
 {
 }
 
-GeneratedFile::GeneratedFile(const QString &path) : // FIXME Don't use - Remove when possible
-    m_d(new GeneratedFilePrivate(path))
-{
-}
-
-GeneratedFile::GeneratedFile(const Utils::FilePath &path) :
-    m_d(new GeneratedFilePrivate(path))
+GeneratedFile::GeneratedFile(const QString &p) :
+    m_d(new GeneratedFilePrivate(p))
 {
 }
 
@@ -120,23 +67,12 @@ GeneratedFile::~GeneratedFile() = default;
 
 QString GeneratedFile::path() const
 {
-    return m_d->path.toString();
-}
-
-FilePath GeneratedFile::filePath() const
-{
     return m_d->path;
 }
 
 void GeneratedFile::setPath(const QString &p)
 {
-    m_d->path = Utils::FilePath::fromString(p).cleanPath();
-}
-
-
-void GeneratedFile::setFilePath(const Utils::FilePath &p)
-{
-    m_d->path = p;
+    m_d->path = QDir::cleanPath(p);
 }
 
 QString GeneratedFile::contents() const
@@ -182,7 +118,8 @@ void GeneratedFile::setEditorId(Id id)
 bool GeneratedFile::write(QString *errorMessage) const
 {
     // Ensure the directory
-    const QDir dir = m_d->path.parentDir().toDir();
+    const QFileInfo info(m_d->path);
+    const QDir dir = info.absoluteDir();
     if (!dir.exists()) {
         if (!dir.mkpath(dir.absolutePath())) {
             *errorMessage = QCoreApplication::translate("BaseFileWizard",
@@ -195,15 +132,15 @@ bool GeneratedFile::write(QString *errorMessage) const
     // Write out
     if (isBinary()) {
         QIODevice::OpenMode flags = QIODevice::WriteOnly | QIODevice::Truncate;
-        Utils::FileSaver saver(m_d->path, flags);
+        Utils::FileSaver saver(FilePath::fromString(m_d->path), flags);
         saver.write(m_d->contents);
         return saver.finalize(errorMessage);
     }
 
     Utils::TextFileFormat format;
-    format.codec = EditorManager::defaultTextCodec();
-    format.lineTerminationMode = EditorManager::defaultLineEnding();
-    return format.writeFile(m_d->path, contents(), errorMessage);
+    format.codec = HomeManager::defaultTextCodec();
+    format.lineTerminationMode = HomeManager::defaultLineEnding();
+    return format.writeFile(Utils::FilePath::fromString(m_d->path), contents(), errorMessage);
 }
 
 GeneratedFile::Attributes GeneratedFile::attributes() const

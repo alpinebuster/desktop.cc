@@ -72,8 +72,8 @@ Project {
                 "extraabi.cpp", "extraabi.h",
                 "extracompiler.cpp", "extracompiler.h",
                 "fileinsessionfinder.cpp", "fileinsessionfinder.h",
-                "filesinallprojectsfind.cpp", "filesinallprojectsfind.h",
                 "filterkitaspectsdialog.cpp", "filterkitaspectsdialog.h",
+                "foldernavigationwidget.cpp", "foldernavigationwidget.h",
                 "gccparser.cpp", "gccparser.h",
                 "gcctoolchain.cpp", "gcctoolchain.h",
                 "gcctoolchainfactories.h",
@@ -118,6 +118,7 @@ Project {
                 "projectfilewizardextension.cpp", "projectfilewizardextension.h",
                 "projectimporter.cpp", "projectimporter.h",
                 "projectmacro.cpp", "projectmacro.h",
+                "projectmacroexpander.cpp", "projectmacroexpander.h",
                 "projectmanager.h",
                 "projectmodels.cpp", "projectmodels.h",
                 "projectnodes.cpp", "projectnodes.h",
@@ -186,8 +187,7 @@ Project {
                 "jsonwizardgeneratorfactory.cpp", "jsonwizardgeneratorfactory.h",
                 "jsonwizardpagefactory.cpp", "jsonwizardpagefactory.h",
                 "jsonwizardpagefactory_p.cpp", "jsonwizardpagefactory_p.h",
-                "jsonwizardscannergenerator.cpp", "jsonwizardscannergenerator.h",
-                "wizarddebug.h"
+                "jsonwizardscannergenerator.cpp", "jsonwizardscannergenerator.h"
             ]
         }
 

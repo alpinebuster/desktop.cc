@@ -73,6 +73,9 @@ def get_arguments():
     parser.add_argument('--python-path',
                         help='Path to python libraries for use by cdbextension (Windows)')
 
+    parser.add_argument('--app-target', help='File name of the executable / app bundle',
+                        default=('Qt Creator.app' if common.is_mac_platform()
+                                 else 'qtcreator'))
     parser.add_argument('--python3', help='File path to python3 executable for generating translations',
                         default=default_python3())
 
@@ -82,7 +85,6 @@ def get_arguments():
     parser.add_argument('--no-cdb',
                         help='Skip cdbextension and the python dependency packaging step (Windows)',
                         action='store_true', default=(not common.is_windows_platform()))
-    parser.add_argument('--no-qbs', help='Skip building Qbs as part of Qt Creator', action='store_true', default=False);
     parser.add_argument('--no-docs', help='Skip documentation generation',
                         action='store_true', default=False)
     parser.add_argument('--no-build-date', help='Does not show build date in about dialog, for reproducible builds',
@@ -109,9 +111,6 @@ def get_arguments():
     parser.add_argument('--zip-threads', help='Sets number of threads to use for 7z. Use "+" for turning threads on '
                         'without a specific number of threads. This is directly passed to the "-mmt" option of 7z.',
                         default='2')
-    parser.add_argument('--add-sanitize-flags', help="Sets flags for sanitizer compilation flags used in Debug builds",
-                        action='append', dest='sanitize_flags', default=[] )
-
     args = parser.parse_args()
     args.with_debug_info = args.build_type == 'RelWithDebInfo'
 
@@ -152,29 +151,27 @@ def common_cmake_arguments(args):
     return cmake_args
 
 def build_qtcreator(args, paths):
-    def cmake_option(option):
-        return 'ON' if option else 'OFF'
     if args.no_qtcreator:
         return
     if not os.path.exists(paths.build):
         os.makedirs(paths.build)
-    build_qbs = (True if not args.no_qbs and os.path.exists(os.path.join(paths.src, 'src', 'shared', 'qbs', 'CMakeLists.txt'))
-                 else False)
     prefix_paths = [os.path.abspath(fp) for fp in args.prefix_paths] + [paths.qt]
     if paths.llvm:
         prefix_paths += [paths.llvm]
     if paths.elfutils:
         prefix_paths += [paths.elfutils]
     prefix_paths = [common.to_posix_path(fp) for fp in prefix_paths]
+    with_docs_str = 'OFF' if args.no_docs else 'ON'
+    build_date_option = 'OFF' if args.no_build_date else 'ON'
+    test_option = 'ON' if args.with_tests else 'OFF'
     cmake_args = ['cmake',
                   '-DCMAKE_PREFIX_PATH=' + ';'.join(prefix_paths),
-                  '-DSHOW_BUILD_DATE=' + cmake_option(not args.no_build_date),
-                  '-DWITH_DOCS=' + cmake_option(not args.no_docs),
-                  '-DBUILD_QBS=' + cmake_option(build_qbs),
-                  '-DBUILD_DEVELOPER_DOCS=' + cmake_option(not args.no_docs),
+                  '-DSHOW_BUILD_DATE=' + build_date_option,
+                  '-DWITH_DOCS=' + with_docs_str,
+                  '-DBUILD_DEVELOPER_DOCS=' + with_docs_str,
                   '-DBUILD_EXECUTABLE_SDKTOOL=OFF',
                   '-DCMAKE_INSTALL_PREFIX=' + common.to_posix_path(paths.install),
-                  '-DWITH_TESTS=' + cmake_option(args.with_tests)]
+                  '-DWITH_TESTS=' + test_option]
     cmake_args += common_cmake_arguments(args)
 
     if common.is_windows_platform():
@@ -185,12 +182,8 @@ def build_qtcreator(args, paths):
     ide_revision = common.get_commit_SHA(paths.src)
     if ide_revision:
         cmake_args += ['-DIDE_REVISION=ON',
-                       '-DIDE_REVISION_STR=' + ide_revision[:10],
+                       '-DIDE_REVISION_STR=' + ide_revision,
                        '-DIDE_REVISION_URL=https://code.qt.io/cgit/qt-creator/qt-creator.git/log/?id=' + ide_revision]
-
-    if not args.build_type.lower() == 'release' and args.sanitize_flags:
-        cmake_args += ['-DWITH_SANITIZE=ON',
-                       '-DSANITIZE_FLAGS=' + ",".join(args.sanitize_flags)]
 
     cmake_args += args.config_args
 
@@ -254,20 +247,12 @@ def build_qtcreatorcdbext(args, paths):
                              '--component', 'qtcreatorcdbext'],
                             paths.qtcreatorcdbext_build)
 
-def zipPatternForApp(paths):
-    # workaround for QTBUG-95845
-    if not common.is_mac_platform():
-        return '*'
-    apps = [d for d in os.listdir(paths.install) if d.endswith('.app')]
-    return apps[0] if apps else '*'
-
-
 def package_qtcreator(args, paths):
     if not args.no_zip:
         if not args.no_qtcreator:
             common.check_print_call(['7z', 'a', '-mmt' + args.zip_threads,
                                      os.path.join(paths.result, 'qtcreator' + args.zip_infix + '.7z'),
-                                     zipPatternForApp(paths)],
+                                     '*'],
                                     paths.install)
             common.check_print_call(['7z', 'a', '-mmt' + args.zip_threads,
                                      os.path.join(paths.result, 'qtcreator' + args.zip_infix + '_dev.7z'),

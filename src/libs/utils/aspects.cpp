@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2018 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "aspects.h"
 
 #include "algorithm.h"
@@ -642,7 +617,7 @@ public:
     QString m_placeHolderText;
     QString m_historyCompleterKey;
     PathChooser::Kind m_expectedKind = PathChooser::File;
-    EnvironmentChange m_environmentChange;
+    Environment m_environment;
     QPointer<QLabel> m_labelDisplay;
     QPointer<FancyLineEdit> m_lineEditDisplay;
     QPointer<PathChooser> m_pathChooserDisplay;
@@ -962,11 +937,11 @@ void StringAspect::setExpectedKind(const PathChooser::Kind expectedKind)
         d->m_pathChooserDisplay->setExpectedKind(expectedKind);
 }
 
-void StringAspect::setEnvironmentChange(const EnvironmentChange &change)
+void StringAspect::setEnvironment(const Environment &env)
 {
-    d->m_environmentChange = change;
+    d->m_environment = env;
     if (d->m_pathChooserDisplay)
-        d->m_pathChooserDisplay->setEnvironmentChange(change);
+        d->m_pathChooserDisplay->setEnvironment(env);
 }
 
 void StringAspect::setBaseFileName(const FilePath &baseFileName)
@@ -1010,8 +985,6 @@ void StringAspect::setValidationFunction(const FancyLineEdit::ValidationFunction
     d->m_validator = validator;
     if (d->m_lineEditDisplay)
         d->m_lineEditDisplay->setValidationFunction(d->m_validator);
-    else if (d->m_pathChooserDisplay)
-        d->m_pathChooserDisplay->setValidationFunction(d->m_validator);
 }
 
 void StringAspect::setOpenTerminalHandler(const std::function<void ()> &openTerminal)
@@ -1062,12 +1035,10 @@ void StringAspect::addToLayout(LayoutBuilder &builder)
         d->m_pathChooserDisplay->setExpectedKind(d->m_expectedKind);
         if (!d->m_historyCompleterKey.isEmpty())
             d->m_pathChooserDisplay->setHistoryCompleter(d->m_historyCompleterKey);
-        if (d->m_validator)
-            d->m_pathChooserDisplay->setValidationFunction(d->m_validator);
-        d->m_pathChooserDisplay->setEnvironmentChange(d->m_environmentChange);
+        d->m_pathChooserDisplay->setEnvironment(d->m_environment);
         d->m_pathChooserDisplay->setBaseDirectory(d->m_baseFileName);
         d->m_pathChooserDisplay->setOpenTerminalHandler(d->m_openTerminal);
-        d->m_pathChooserDisplay->setFilePath(FilePath::fromUserInput(displayedString));
+        d->m_pathChooserDisplay->setFilePath(FilePath::fromString(displayedString));
         d->updateWidgetFromCheckStatus(this, d->m_pathChooserDisplay.data());
         addLabeledItem(builder, d->m_pathChooserDisplay);
         useMacroExpander(d->m_pathChooserDisplay->lineEdit());
@@ -1077,13 +1048,12 @@ void StringAspect::addToLayout(LayoutBuilder &builder)
                     if (d->m_blockAutoApply)
                         return;
                     d->m_blockAutoApply = true;
-                    setValue(d->m_pathChooserDisplay->filePath().toString());
+                    setValue(d->m_pathChooserDisplay->path());
                     d->m_blockAutoApply = false;
                 });
             } else {
-                connect(d->m_pathChooserDisplay, &PathChooser::pathChanged,
-                        this, [this](const QString &path) {
-                    setValue(path);
+                connect(d->m_pathChooserDisplay, &PathChooser::pathChanged, this, [this] {
+                    setValue(d->m_pathChooserDisplay->path());
                 });
             }
         }
@@ -1164,7 +1134,7 @@ QVariant StringAspect::volatileValue() const
     switch (d->m_displayStyle) {
     case PathChooserDisplay:
         QTC_ASSERT(d->m_pathChooserDisplay, return {});
-        return d->m_pathChooserDisplay->filePath().toString();
+        return d->m_pathChooserDisplay->path();
     case LineEditDisplay:
         QTC_ASSERT(d->m_lineEditDisplay, return {});
         return d->m_lineEditDisplay->text();
@@ -1182,7 +1152,7 @@ void StringAspect::setVolatileValue(const QVariant &val)
     switch (d->m_displayStyle) {
     case PathChooserDisplay:
         if (d->m_pathChooserDisplay)
-            d->m_pathChooserDisplay->setFilePath(FilePath::fromVariant(val));
+            d->m_pathChooserDisplay->setPath(val.toString());
         break;
     case LineEditDisplay:
         if (d->m_lineEditDisplay)
@@ -1324,7 +1294,6 @@ QAction *BoolAspect::action()
     auto act = BaseAspect::action(); // Creates it.
     act->setCheckable(true);
     act->setChecked(value());
-    act->setToolTip(toolTip());
     connect(act, &QAction::triggered, this, [this](bool newValue) {
         // The check would be nice to have in simple conditions, but if we
         // have an action that's used both on a settings page and as action

@@ -1,28 +1,3 @@
-/****************************************************************************
-**
-** Copyright (C) 2016 The Qt Company Ltd.
-** Contact: https://www.qt.io/licensing/
-**
-** This file is part of Qt Creator.
-**
-** Commercial License Usage
-** Licensees holding valid commercial Qt licenses may use this file in
-** accordance with the commercial license agreement provided with the
-** Software or, alternatively, in accordance with the terms contained in
-** a written agreement between you and The Qt Company. For licensing terms
-** and conditions see https://www.qt.io/terms-conditions. For further
-** information use the contact form at https://www.qt.io/contact-us.
-**
-** GNU General Public License Usage
-** Alternatively, this file may be used under the terms of the GNU
-** General Public License version 3 as published by the Free Software
-** Foundation with exceptions as appearing in the file LICENSE.GPL3-EXCEPT
-** included in the packaging of this file. Please review the following
-** information to ensure the GNU General Public License requirements will
-** be met: https://www.gnu.org/licenses/gpl-3.0.html.
-**
-****************************************************************************/
-
 #include "commandsfile.h"
 #include "command_p.h"
 #include <coreplugin/dialogs/shortcutsettings.h>
@@ -47,12 +22,23 @@ namespace Internal {
 
 struct Context // XML parsing context with strings.
 {
-    const QString mappingElement = "mapping";
-    const QString shortCutElement = "shortcut";
-    const QString idAttribute = "id";
-    const QString keyElement = "key";
-    const QString valueAttribute = "value";
+    Context();
+
+    const QString mappingElement;
+    const QString shortCutElement;
+    const QString idAttribute;
+    const QString keyElement;
+    const QString valueAttribute;
 };
+
+Context::Context() :
+    mappingElement(QLatin1String("mapping")),
+    shortCutElement(QLatin1String("shortcut")),
+    idAttribute(QLatin1String("id")),
+    keyElement(QLatin1String("key")),
+    valueAttribute(QLatin1String("value"))
+{
+}
 
 /*!
     \class Core::Internal::CommandsFile
@@ -65,8 +51,8 @@ struct Context // XML parsing context with strings.
 /*!
     \internal
 */
-CommandsFile::CommandsFile(const FilePath &filename)
-    : m_filePath(filename)
+CommandsFile::CommandsFile(const QString &filename)
+    : m_filename(filename)
 {
 
 }
@@ -78,7 +64,7 @@ QMap<QString, QList<QKeySequence>> CommandsFile::importCommands() const
 {
     QMap<QString, QList<QKeySequence>> result;
 
-    QFile file(m_filePath.toString());
+    QFile file(m_filename);
     if (!file.open(QIODevice::ReadOnly|QIODevice::Text))
         return result;
 
@@ -119,7 +105,7 @@ QMap<QString, QList<QKeySequence>> CommandsFile::importCommands() const
 
 bool CommandsFile::exportCommands(const QList<ShortcutItem *> &items)
 {
-    FileSaver saver(m_filePath, QIODevice::Text);
+    Utils::FileSaver saver(Utils::FilePath::fromString(m_filename), QIODevice::Text);
     if (!saver.hasError()) {
         const Context ctx;
         QXmlStreamWriter w(saver.file());
